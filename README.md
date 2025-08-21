@@ -1,4 +1,4 @@
-![Trafficinator Logo](A_digitally_designed_logo_titled_"TRAFFICINATOR"_f.png)
+![Trafficinator Logo](logo.png)
 
 # Trafficinator 🦖
 
