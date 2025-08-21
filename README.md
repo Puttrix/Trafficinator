@@ -32,8 +32,8 @@ It helps you **stress test Matomo’s frontend performance** when handling large
 ## 🛠️ Installation  
 
 ### Requirements  
-- Python 3.9+  
-- Docker + Docker Compose (optional, recommended for containerized setup)  
+- Docker + Docker Compose  
+- A running Matomo instance to test against  
 
 ### Clone the repo  
 ```bash
@@ -41,69 +41,87 @@ git clone https://github.com/Puttrix/Trafficinator.git
 cd Trafficinator
 ```
 
-### Install dependencies (non-Docker)  
-```bash
-pip install -r requirements.txt
-```
+The project is fully containerized - no local Python installation needed!
 
 ---
 
 ## ⚡ Usage  
 
-### Run locally  
+### Docker Compose (Recommended)  
+The project includes a pre-configured Docker Compose setup:
+
 ```bash
-python trafficinator.py --url https://your-matomo-instance.tld --visits 20000 --concurrency 50
+# Start load generation with default settings
+docker-compose -f docker-compose.loadgen.yml up --build
+
+# View logs in real-time
+docker-compose -f docker-compose.loadgen.yml logs -f matomo_loadgen
+
+# Stop the load generator
+docker-compose -f docker-compose.loadgen.yml down
 ```
 
-### Run with Docker  
-Build and run directly:  
-```bash
-docker build -t trafficinator .
-docker run --rm trafficinator --url https://your-matomo-instance.tld --visits 20000 --concurrency 50
-```
-
----
-
-## 🐳 Docker Compose Setup  
-
-Create a `docker-compose.yml` in your project folder:  
+### Configuration  
+Edit `docker-compose.loadgen.yml` to customize your load test:
 
 ```yaml
-version: "3.9"
-
-services:
-  trafficinator:
-    build: .
-    container_name: trafficinator
-    command: >
-      python trafficinator.py
-      --url https://your-matomo-instance.tld
-      --visits 20000
-      --concurrency 50
-    restart: "no"
+environment:
+  MATOMO_URL: "https://your-matomo-instance.com/matomo.php"
+  MATOMO_SITE_ID: "1"
+  TARGET_VISITS_PER_DAY: "20000"
+  PAGEVIEWS_MIN: "3"
+  PAGEVIEWS_MAX: "6"
+  CONCURRENCY: "50"
+  PAUSE_BETWEEN_PVS_MIN: "0.5"
+  PAUSE_BETWEEN_PVS_MAX: "2.0"
+  AUTO_STOP_AFTER_HOURS: "24"     # Stop after N hours (0 = disabled)
+  MAX_TOTAL_VISITS: "0"           # Stop after N visits (0 = disabled)
 ```
 
-### Run with Compose  
-```bash
-docker compose up --build
-```
+### URL Structure  
+The load generator uses a **3-level hierarchical URL structure** from `config/urls.txt`:
+- **10 main categories**: products, blog, support, company, resources, news, services, solutions, documentation, community
+- **5 subcategories each**: e.g., products → hardware, software, accessories, bundles, enterprise  
+- **40 pages per subcategory**: 2,000 total URLs for comprehensive testing
 
-You can also override settings without editing the file:  
-```bash
-docker compose run --rm trafficinator --url https://analytics.example.com --visits 10000 --concurrency 20
-```
+This creates realistic navigation patterns that will generate rich data in Matomo's:
+- Page hierarchy reports
+- Behavior flow analysis  
+- Content performance metrics
+- URL structure insights
 
 ---
 
 ## 📊 Example Workflow  
 
-1. **Populate reports**  
+1. **Configure your Matomo instance**  
    ```bash
-   docker compose run --rm trafficinator --url https://analytics.example.com --visits 20000 --concurrency 30
+   # Edit docker-compose.loadgen.yml
+   MATOMO_URL: "https://your-matomo-instance.com/matomo.php"
+   MATOMO_SITE_ID: "1"
    ```
-2. **Check Matomo reports** → Identify slow reports (e.g., segments, device reports)  
-3. **Optimize settings** → Tune archiving, caching, DB indexing, etc.  
-4. **Re-run Trafficinator** → Compare load times before/after  
+
+2. **Generate baseline traffic data**  
+   ```bash
+   docker-compose -f docker-compose.loadgen.yml up --build
+   ```
+
+3. **Monitor and analyze**  
+   - Check Matomo reports for performance bottlenecks
+   - Identify slow-loading reports (Pages, Visitors, Behavior Flow)
+   - Note database query performance and frontend rendering times
+
+4. **Optimize Matomo settings**  
+   - Tune archiving processes
+   - Optimize database indexing  
+   - Adjust caching configuration
+   - Configure report segmentation limits
+
+5. **Validate improvements**  
+   ```bash
+   # Run consistent load test to compare performance
+   docker-compose -f docker-compose.loadgen.yml up
+   ```  
 
 ---
 
