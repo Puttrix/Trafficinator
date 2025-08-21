@@ -24,27 +24,27 @@ Trafficinator is a Matomo load testing tool built with Python and Docker. It gen
 
 ### Running the Load Generator
 ```bash
-docker-compose -f docker-compose.loadgen.yml up --build
+docker-compose up --build
 ```
 
 ### Stop and Clean Up
 ```bash
-docker-compose -f docker-compose.loadgen.yml down
+docker-compose down
 ```
 
 ### View Logs
 ```bash
-docker-compose -f docker-compose.loadgen.yml logs -f matomo_loadgen
+docker-compose logs -f matomo_loadgen
 ```
 
 ### Rebuild Container
 ```bash
-docker-compose -f docker-compose.loadgen.yml build --no-cache
+docker-compose build --no-cache
 ```
 
 ## Configuration
 
-All configuration is done via environment variables in `docker-compose.loadgen.yml`:
+All configuration is done via environment variables in `docker-compose.yml`:
 
 - `MATOMO_URL` - Target Matomo installation endpoint
 - `MATOMO_SITE_ID` - Site ID in Matomo to track

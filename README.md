@@ -52,17 +52,17 @@ The project includes a pre-configured Docker Compose setup:
 
 ```bash
 # Start load generation with default settings
-docker-compose -f docker-compose.loadgen.yml up --build
+docker-compose up --build
 
 # View logs in real-time
-docker-compose -f docker-compose.loadgen.yml logs -f matomo_loadgen
+docker-compose logs -f matomo_loadgen
 
 # Stop the load generator
-docker-compose -f docker-compose.loadgen.yml down
+docker-compose down
 ```
 
 ### Configuration  
-Edit `docker-compose.loadgen.yml` to customize your load test:
+Edit `docker-compose.yml` to customize your load test:
 
 ```yaml
 environment:
@@ -96,14 +96,14 @@ This creates realistic navigation patterns that will generate rich data in Matom
 
 1. **Configure your Matomo instance**  
    ```bash
-   # Edit docker-compose.loadgen.yml
+   # Edit docker-compose.yml
    MATOMO_URL: "https://your-matomo-instance.com/matomo.php"
    MATOMO_SITE_ID: "1"
    ```
 
 2. **Generate baseline traffic data**  
    ```bash
-   docker-compose -f docker-compose.loadgen.yml up --build
+   docker-compose up --build
    ```
 
 3. **Monitor and analyze**  
@@ -120,7 +120,7 @@ This creates realistic navigation patterns that will generate rich data in Matom
 5. **Validate improvements**  
    ```bash
    # Run consistent load test to compare performance
-   docker-compose -f docker-compose.loadgen.yml up
+   docker-compose up
    ```  
 
 ---
