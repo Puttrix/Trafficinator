@@ -1,3 +1,5 @@
+![Trafficinator Logo](A_digitally_designed_logo_titled_"TRAFFICINATOR"_f.png)
+
 # Trafficinator 🦖
 
 Trafficinator is a **load testing tool** built to generate **realistic traffic patterns** for [Matomo](https://matomo.org/).  
