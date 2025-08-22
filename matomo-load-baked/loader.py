@@ -25,6 +25,14 @@ MAX_TOTAL_VISITS = int(os.environ.get("MAX_TOTAL_VISITS", "0"))             # 0 
 # Site search configuration
 SITESEARCH_PROBABILITY = float(os.environ.get("SITESEARCH_PROBABILITY", "0.15"))  # 15% of visits will have search
 
+# Visit duration configuration (in minutes)
+VISIT_DURATION_MIN = float(os.environ.get("VISIT_DURATION_MIN", "1.0"))  # Minimum visit duration
+VISIT_DURATION_MAX = float(os.environ.get("VISIT_DURATION_MAX", "8.0"))  # Maximum visit duration
+
+# Outlinks and downloads configuration
+OUTLINKS_PROBABILITY = float(os.environ.get("OUTLINKS_PROBABILITY", "0.10"))  # 10% of visits will have outlinks
+DOWNLOADS_PROBABILITY = float(os.environ.get("DOWNLOADS_PROBABILITY", "0.08"))  # 8% of visits will have downloads
+
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
@@ -39,6 +47,32 @@ SEARCH_TERMS = [
     'news', 'blog', 'updates', 'announcement', 'release', 'version', 'security',
     'privacy', 'terms', 'policy', 'legal', 'careers', 'jobs', 'team', 'company',
     'analytics', 'tracking', 'dashboard', 'report', 'statistics', 'metrics', 'data'
+]
+
+# Outlinks for external link tracking
+OUTLINKS = [
+    'https://github.com', 'https://stackoverflow.com', 'https://developer.mozilla.org',
+    'https://www.w3.org', 'https://nodejs.org', 'https://reactjs.org', 'https://vuejs.org',
+    'https://angular.io', 'https://jquery.com', 'https://bootstrap.getbootstrap.com',
+    'https://tailwindcss.com', 'https://fontawesome.com', 'https://unsplash.com',
+    'https://fonts.google.com', 'https://codepen.io', 'https://jsfiddle.net',
+    'https://wikipedia.org', 'https://youtube.com', 'https://twitter.com',
+    'https://linkedin.com', 'https://facebook.com', 'https://instagram.com',
+    'https://reddit.com', 'https://medium.com', 'https://dev.to'
+]
+
+# Downloads for download tracking
+DOWNLOADS = [
+    '/downloads/user-manual.pdf', '/downloads/getting-started-guide.pdf',
+    '/downloads/api-documentation.pdf', '/downloads/whitepaper.pdf',
+    '/downloads/case-study.pdf', '/downloads/technical-specs.pdf',
+    '/files/product-brochure.pdf', '/files/pricing-sheet.pdf',
+    '/assets/company-presentation.pptx', '/assets/logo-pack.zip',
+    '/downloads/software-v2.1.0.zip', '/downloads/mobile-app.apk',
+    '/files/dataset.csv', '/files/report-2024.xlsx',
+    '/downloads/template.docx', '/downloads/configuration.json',
+    '/files/backup.tar.gz', '/downloads/installer.exe',
+    '/assets/images.zip', '/downloads/source-code.zip'
 ]
 
 def read_urls(path):
@@ -72,9 +106,14 @@ async def visit(session, urls):
     ua = random.choice(USER_AGENTS)
     ref = random.choice(urls)
     
-    # Determine if this visit will include site search
+    # Determine if this visit will include site search, outlinks, or downloads
     has_search = random.random() < SITESEARCH_PROBABILITY
+    has_outlink = random.random() < OUTLINKS_PROBABILITY
+    has_download = random.random() < DOWNLOADS_PROBABILITY
+    
     search_pageview = random.randint(1, num_pvs) if has_search else -1
+    outlink_pageview = random.randint(1, num_pvs) if has_outlink else -1
+    download_pageview = random.randint(1, num_pvs) if has_download else -1
 
     for i in range(num_pvs):
         url = random.choice(urls)
@@ -99,6 +138,20 @@ async def visit(session, urls):
             params['search_count'] = search_count
             params['action_name'] = f'Search: {search_keyword}'
         
+        # Add outlink tracking if this is the outlink pageview
+        elif i + 1 == outlink_pageview:
+            outlink_url = random.choice(OUTLINKS)
+            params['link'] = outlink_url
+            params['url'] = outlink_url  # Matomo recommendation
+            params['action_name'] = f'Outlink: {outlink_url}'
+        
+        # Add download tracking if this is the download pageview
+        elif i + 1 == download_pageview:
+            download_file = random.choice(DOWNLOADS)
+            params['download'] = download_file
+            params['url'] = download_file  # Matomo recommendation
+            params['action_name'] = f'Download: {download_file.split("/")[-1]}'
+        
         # Force new visit on the first pageview to avoid merging with older sessions
         if i == 0:
             params['new_visit'] = 1
@@ -108,6 +161,15 @@ async def visit(session, urls):
         await send_hit(session, params, headers)
         if i < num_pvs - 1:
             await asyncio.sleep(random.uniform(PAUSE_BETWEEN_PVS_MIN, PAUSE_BETWEEN_PVS_MAX))
+    
+    # Add extended visit duration - simulate user staying on site after last pageview
+    visit_duration_seconds = random.uniform(VISIT_DURATION_MIN * 60, VISIT_DURATION_MAX * 60)
+    # Subtract time already spent on pageviews
+    time_spent_on_pageviews = (num_pvs - 1) * ((PAUSE_BETWEEN_PVS_MIN + PAUSE_BETWEEN_PVS_MAX) / 2)
+    remaining_time = max(0, visit_duration_seconds - time_spent_on_pageviews)
+    
+    if remaining_time > 0:
+        await asyncio.sleep(remaining_time)
 
 class GracefulExit(SystemExit):
     pass

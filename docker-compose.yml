@@ -19,5 +19,11 @@ services:
       MAX_TOTAL_VISITS: "0"            # total visits before exit (0 = disabled)
       # Site search options
       SITESEARCH_PROBABILITY: "0.15"   # probability (0-1) that a visit includes site search
+      # Visit duration options (in minutes)
+      VISIT_DURATION_MIN: "1.0"        # minimum visit duration in minutes
+      VISIT_DURATION_MAX: "8.0"        # maximum visit duration in minutes
+      # Outlinks and downloads options
+      OUTLINKS_PROBABILITY: "0.10"     # probability (0-1) that a visit includes outlinks
+      DOWNLOADS_PROBABILITY: "0.08"    # probability (0-1) that a visit includes downloads
     volumes:
       - ./config:/config
