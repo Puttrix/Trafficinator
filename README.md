@@ -12,6 +12,7 @@ It helps you **stress test Matomo’s frontend performance** when handling large
 - **Realistic traffic simulation**  
   - Generates **3–6 pageviews per visit** with natural timing between requests  
   - Rotates **user agents** and **URLs** to create diverse report data  
+  - **Site search simulation** with configurable probability and realistic search terms  
 
 - **High-volume traffic**  
   - Configurable to produce **20,000+ visits/day**  
@@ -76,6 +77,7 @@ environment:
   PAUSE_BETWEEN_PVS_MAX: "2.0"
   AUTO_STOP_AFTER_HOURS: "24"     # Stop after N hours (0 = disabled)
   MAX_TOTAL_VISITS: "0"           # Stop after N visits (0 = disabled)
+  SITESEARCH_PROBABILITY: "0.15"  # Probability (0-1) that a visit includes site search
 ```
 
 ### URL Structure  
@@ -89,6 +91,16 @@ This creates realistic navigation patterns that will generate rich data in Matom
 - Behavior flow analysis  
 - Content performance metrics
 - URL structure insights
+
+### Site Search Simulation
+The load generator includes **realistic site search behavior**:
+- **Configurable probability**: Set `SITESEARCH_PROBABILITY` (0.0-1.0) to control how many visits include searches
+- **35 realistic search terms**: Including 'product', 'support', 'documentation', 'pricing', 'features', etc.
+- **Search categories**: Random assignment to Products, Support, Documentation categories (30% probability)
+- **Result counts**: Simulates 0-25 search results per query
+- **Natural placement**: Search events occur randomly within visit pageviews
+
+This generates comprehensive data for Matomo's site search analytics, helping you test and optimize search-related reports and performance.
 
 ---
 
