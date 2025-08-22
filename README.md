@@ -143,6 +143,16 @@ docker compose logs matomo_loadgen
 
 If outlinks/downloads still don't appear in Matomo, check the Matomo server access logs for `matomo.php` requests and verify the querystring contains `link=` or `download=` and a `urlref=` parameter.
 
+### Behavior guarantees
+
+The load generator now enforces a few guarantees that help Matomo classify events correctly:
+
+- Outlinks, Downloads and Site Search will never be the *first* action in a visit. A regular pageview always precedes any of these events (when the visit contains multiple pageviews).
+- For outlink and download hits the generator sets `urlref` to the page URL that contained the link/download. This improves Matomo's ability to attribute and display the click/download in the Outlinks/Downloads reports.
+- Download entries that are configured as relative paths are converted to fully-qualified URLs using the page's base URL before being sent to Matomo.
+
+These changes are implemented in `matomo-load-baked/loader.py`. Use the debug script and container logs (see above) to verify requests include `urlref`, `link`, or `download` as expected.
+
 ### Extended Visit Duration
 The load generator simulates **realistic visit durations** to create more accurate engagement metrics:
 - **Configurable duration range**: Set `VISIT_DURATION_MIN` and `VISIT_DURATION_MAX` in minutes (default: 1-8 minutes)

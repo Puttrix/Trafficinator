@@ -97,6 +97,25 @@ def rand_hex(n=16):
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s %(levelname)s %(message)s')
 
+
+def choose_action_pages(num_pvs: int, want_search: bool, want_outlink: bool, want_download: bool):
+    """Choose pageview indices for search/outlink/download actions.
+
+    Guarantees:
+    - If num_pvs <= 1 => all actions disabled (-1).
+    - Otherwise, any chosen page is in the inclusive range [2, num_pvs].
+
+    This helper is deterministic only in terms of its constraints; it uses
+    randomness for selection so callers should treat results as non-deterministic.
+    """
+    if num_pvs <= 1:
+        return -1, -1, -1
+
+    def pick(want: bool):
+        return random.randint(2, num_pvs) if want else -1
+
+    return pick(want_search), pick(want_outlink), pick(want_download)
+
 async def send_hit(session, params, headers):
     try:
         async with session.get(MATOMO_URL, params=params, headers=headers) as resp:
@@ -116,10 +135,18 @@ async def visit(session, urls):
     has_search = random.random() < SITESEARCH_PROBABILITY
     has_outlink = random.random() < OUTLINKS_PROBABILITY
     has_download = random.random() < DOWNLOADS_PROBABILITY
-    
-    search_pageview = random.randint(1, num_pvs) if has_search else -1
-    outlink_pageview = random.randint(1, num_pvs) if has_outlink else -1
-    download_pageview = random.randint(1, num_pvs) if has_download else -1
+
+    # Ensure search/outlink/download are NEVER the first pageview.
+    # If there's only one pageview in the visit, disable these actions.
+    if num_pvs <= 1:
+        search_pageview = -1
+        outlink_pageview = -1
+        download_pageview = -1
+    else:
+        # Pick a pageview in the range 2..num_pvs (so not the first PV)
+        search_pageview = random.randint(2, num_pvs) if has_search else -1
+        outlink_pageview = random.randint(2, num_pvs) if has_outlink else -1
+        download_pageview = random.randint(2, num_pvs) if has_download else -1
 
     for i in range(num_pvs):
         url = random.choice(urls)
