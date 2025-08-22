@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-import os, asyncio, random, time, signal, sys
+import os
+import asyncio
+import random
+import time
+import signal
 import aiohttp
 
 # ---- Configuration via environment variables ----
@@ -18,11 +22,23 @@ PAUSE_BETWEEN_PVS_MAX = float(os.environ.get("PAUSE_BETWEEN_PVS_MAX", "2.0"))
 AUTO_STOP_AFTER_HOURS = float(os.environ.get("AUTO_STOP_AFTER_HOURS", "0"))  # 0 = disabled
 MAX_TOTAL_VISITS = int(os.environ.get("MAX_TOTAL_VISITS", "0"))             # 0 = disabled
 
+# Site search configuration
+SITESEARCH_PROBABILITY = float(os.environ.get("SITESEARCH_PROBABILITY", "0.15"))  # 15% of visits will have search
+
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
     'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+]
+
+# Search terms for site search functionality
+SEARCH_TERMS = [
+    'product', 'service', 'contact', 'about', 'help', 'support', 'pricing', 'features',
+    'login', 'register', 'download', 'documentation', 'tutorial', 'guide', 'faq',
+    'news', 'blog', 'updates', 'announcement', 'release', 'version', 'security',
+    'privacy', 'terms', 'policy', 'legal', 'careers', 'jobs', 'team', 'company',
+    'analytics', 'tracking', 'dashboard', 'report', 'statistics', 'metrics', 'data'
 ]
 
 def read_urls(path):
@@ -55,6 +71,10 @@ async def visit(session, urls):
     vid = rand_hex(16)  # visitor id
     ua = random.choice(USER_AGENTS)
     ref = random.choice(urls)
+    
+    # Determine if this visit will include site search
+    has_search = random.random() < SITESEARCH_PROBABILITY
+    search_pageview = random.randint(1, num_pvs) if has_search else -1
 
     for i in range(num_pvs):
         url = random.choice(urls)
@@ -66,6 +86,19 @@ async def visit(session, urls):
             '_id': vid,
             'rand': random.randint(0, 2**31-1),
         }
+        
+        # Add site search parameters if this is the search pageview
+        if i + 1 == search_pageview:
+            search_keyword = random.choice(SEARCH_TERMS)
+            search_category = random.choice(['', 'Products', 'Support', 'Documentation']) if random.random() < 0.3 else ''
+            search_count = random.randint(0, 25)  # Number of search results
+            
+            params['search'] = search_keyword
+            if search_category:
+                params['search_cat'] = search_category
+            params['search_count'] = search_count
+            params['action_name'] = f'Search: {search_keyword}'
+        
         # Force new visit on the first pageview to avoid merging with older sessions
         if i == 0:
             params['new_visit'] = 1

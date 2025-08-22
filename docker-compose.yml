@@ -17,5 +17,7 @@ services:
       # Auto-stop options (choose one or both)
       AUTO_STOP_AFTER_HOURS: "24"      # stop after N hours (0 = disabled)
       MAX_TOTAL_VISITS: "0"            # total visits before exit (0 = disabled)
+      # Site search options
+      SITESEARCH_PROBABILITY: "0.15"   # probability (0-1) that a visit includes site search
     volumes:
       - ./config:/config
