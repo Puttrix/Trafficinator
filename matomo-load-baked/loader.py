@@ -5,6 +5,8 @@ import random
 import time
 import signal
 import aiohttp
+import logging
+import urllib.parse
 
 # ---- Configuration via environment variables ----
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
@@ -91,6 +93,10 @@ def rand_hex(n=16):
     import random
     return ''.join(random.choice('0123456789abcdef') for _ in range(n))
 
+# Logging configuration (can be adjusted with environment variable LOG_LEVEL)
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s %(levelname)s %(message)s')
+
 async def send_hit(session, params, headers):
     try:
         async with session.get(MATOMO_URL, params=params, headers=headers) as resp:
@@ -117,15 +123,26 @@ async def visit(session, urls):
 
     for i in range(num_pvs):
         url = random.choice(urls)
+        # Keep the original page URL (the page that contains any outlink/download)
+        page_url = url
+
         params = {
             'idsite': SITE_ID,
             'rec': 1,
-            'url': url,
+            'url': page_url,
             'action_name': f'LoadTest PV {i+1}/{num_pvs}',
             '_id': vid,
             'rand': random.randint(0, 2**31-1),
         }
-        
+
+        # If this is not the first pageview, include referrer as the previous page
+        # so Matomo can attribute outlinks/downloads correctly.
+        if i == 0:
+            params['new_visit'] = 1
+            params['urlref'] = ref
+        else:
+            params['urlref'] = last_page_url
+
         # Add site search parameters if this is the search pageview
         if i + 1 == search_pageview:
             search_keyword = random.choice(SEARCH_TERMS)
@@ -141,24 +158,60 @@ async def visit(session, urls):
         # Add outlink tracking if this is the outlink pageview
         elif i + 1 == outlink_pageview:
             outlink_url = random.choice(OUTLINKS)
+            # urlref must point to the page that contained the link
+            params['urlref'] = page_url
             params['link'] = outlink_url
-            params['url'] = outlink_url  # Matomo recommendation
+            params['url'] = outlink_url  # Matomo recommendation: url contains the clicked href
             params['action_name'] = f'Outlink: {outlink_url}'
         
         # Add download tracking if this is the download pageview
         elif i + 1 == download_pageview:
             download_file = random.choice(DOWNLOADS)
-            params['download'] = download_file
-            params['url'] = download_file  # Matomo recommendation
-            params['action_name'] = f'Download: {download_file.split("/")[-1]}'
+            # If DOWNLOADS items are paths, convert to a full URL using the current page as base
+            if download_file.startswith('http://') or download_file.startswith('https://'):
+                download_url = download_file
+            else:
+                parsed = urllib.parse.urlparse(page_url)
+                base_url = f"{parsed.scheme}://{parsed.netloc}"
+                download_url = urllib.parse.urljoin(base_url, download_file)
+
+            # urlref must point to the page that contained the download link
+            params['urlref'] = page_url
+            params['download'] = download_url
+            params['url'] = download_url  # Matomo recommendation: url contains the download path/URL
+            params['action_name'] = f'Download: {download_url.split("/")[-1]}'
         
-        # Force new visit on the first pageview to avoid merging with older sessions
-        if i == 0:
-            params['new_visit'] = 1
-            params['urlref'] = ref
+    # Update last_page_url so the next pageview can use it as urlref
+    # For outlink/download we keep last_page_url as the original page containing the link
+    # so subsequent pageviews still show a sensible referrer.
+    # (last_page_url is used at the top of the loop for non-first PVs)
 
         headers = {'User-Agent': ua}
+
+        # Build a debug-friendly request string for logging
+        try:
+            request_qs = urllib.parse.urlencode(params)
+        except Exception:
+            request_qs = str(params)
+        request_url = f"{MATOMO_URL}?{request_qs}"
+
+        # Log only the outlink/download hits at INFO level to avoid noise
+        if 'download' in params:
+            logging.info('Sending download hit: visitor=%s file=%s referer=%s', vid, params.get('download'), params.get('urlref'))
+            logging.debug('Matomo request: %s', request_url)
+        elif 'link' in params:
+            logging.info('Sending outlink hit: visitor=%s link=%s referer=%s', vid, params.get('link'), params.get('urlref'))
+            logging.debug('Matomo request: %s', request_url)
+        else:
+            logging.debug('Sending pageview: visitor=%s action=%s', vid, params.get('action_name'))
+
         await send_hit(session, params, headers)
+        # set last_page_url for next iteration
+        if i + 1 == outlink_pageview or i + 1 == download_pageview:
+            # user clicked away; keep last_page_url as the page that contained the link
+            last_page_url = page_url
+        else:
+            last_page_url = page_url
         if i < num_pvs - 1:
             await asyncio.sleep(random.uniform(PAUSE_BETWEEN_PVS_MIN, PAUSE_BETWEEN_PVS_MAX))
     

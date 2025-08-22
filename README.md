@@ -124,6 +124,25 @@ The load generator includes **realistic outlinks and download behavior**:
 
 This generates data for Matomo's **Behavior** → **Outlinks** and **Behavior** → **Downloads** reports, providing insights into user interaction with external content and file downloads.
 
+### Debugging outlinks & downloads
+
+If you don't see outlinks or downloads in Matomo, use the included debug helpers:
+
+- `matomo-load-baked/debug_build_requests.py` — builds and prints the exact Matomo request URLs for a few simulated visits (no network). Good for quick inspection.
+- Runtime debug: enable debug logging and limit visits so you can watch requests in the container logs.
+
+Example quick test (runs a short load and exits):
+
+```bash
+# Run with verbose logs and stop after 50 visits
+LOG_LEVEL=DEBUG MAX_TOTAL_VISITS=50 CONCURRENCY=5 docker compose up --build --abort-on-container-exit
+
+# After run: check visitor log / Outlinks / Downloads in Matomo and container logs
+docker compose logs matomo_loadgen
+```
+
+If outlinks/downloads still don't appear in Matomo, check the Matomo server access logs for `matomo.php` requests and verify the querystring contains `link=` or `download=` and a `urlref=` parameter.
+
 ### Extended Visit Duration
 The load generator simulates **realistic visit durations** to create more accurate engagement metrics:
 - **Configurable duration range**: Set `VISIT_DURATION_MIN` and `VISIT_DURATION_MAX` in minutes (default: 1-8 minutes)
