@@ -3,9 +3,9 @@ services:
     build:
       context: ./matomo-load-baked
     container_name: matomo-loadgen
-    restart: "no"     # let auto-stop exit cleanly; change to unless-stopped if you want it to restart
+    restart: unless-stopped
     environment:
-      MATOMO_URL: https://matomo.surputte.se/matomo.php
+      MATOMO_URL: "https://matomo.surputte.se/matomo.php"
       MATOMO_SITE_ID: "1"
       URLS_FILE: /config/urls.txt
       TARGET_VISITS_PER_DAY: "20000"
@@ -15,7 +15,7 @@ services:
       PAUSE_BETWEEN_PVS_MIN: "0.5"
       PAUSE_BETWEEN_PVS_MAX: "2.0"
       # Auto-stop options (choose one or both)
-      AUTO_STOP_AFTER_HOURS: "24"      # stop after N hours (0 = disabled)
+      AUTO_STOP_AFTER_HOURS: "0"       # stop after N hours (0 = disabled) — default disabled
       MAX_TOTAL_VISITS: "0"            # total visits before exit (0 = disabled)
       # Site search options
       SITESEARCH_PROBABILITY: "0.15"   # probability (0-1) that a visit includes site search
@@ -27,3 +27,4 @@ services:
       DOWNLOADS_PROBABILITY: "0.08"    # probability (0-1) that a visit includes downloads
     volumes:
       - ./config:/config
+

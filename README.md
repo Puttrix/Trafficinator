@@ -153,6 +153,17 @@ The load generator now enforces a few guarantees that help Matomo classify event
 
 These changes are implemented in `matomo-load-baked/loader.py`. Use the debug script and container logs (see above) to verify requests include `urlref`, `link`, or `download` as expected.
 
+### Daily cap behavior (MAX_TOTAL_VISITS)
+
+`MAX_TOTAL_VISITS` is interpreted as a per-24-hour cap. When set to a positive integer the load generator will stop producing new visits once that daily cap is reached, then resume production when the 24-hour window resets. This allows the generator to run indefinitely while enforcing a maximum number of visits per day.
+
+Examples:
+
+- `MAX_TOTAL_VISITS=0` (default) — no daily cap, generator will run indefinitely (unless `AUTO_STOP_AFTER_HOURS` is set).
+- `MAX_TOTAL_VISITS=10000` — generator will produce up to 10,000 visits in each rolling 24-hour window, then pause until the window resets.
+
+You can still use `AUTO_STOP_AFTER_HOURS` to explicitly stop the run after a certain number of hours; if both are set, the generator will stop when either condition is met.
+
 ### Extended Visit Duration
 The load generator simulates **realistic visit durations** to create more accurate engagement metrics:
 - **Configurable duration range**: Set `VISIT_DURATION_MIN` and `VISIT_DURATION_MAX` in minutes (default: 1-8 minutes)

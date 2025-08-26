@@ -274,6 +274,9 @@ async def main():
         # Auto-stop timers/limits
         start_ts = time.time()
         visits_total = 0
+        # Per-24h counter for MAX_TOTAL_VISITS
+        visits_today = 0
+        day_window_start = start_ts
 
         async def producer():
             nonlocal tokens, last
@@ -293,12 +296,19 @@ async def main():
                     tokens = CONCURRENCY
 
                 produced = 0
+                # If a daily cap is configured, pause producing when reached until 24h window resets
+                if MAX_TOTAL_VISITS > 0 and visits_today >= MAX_TOTAL_VISITS:
+                    # if the day window has passed, reset the counter
+                    if now - day_window_start >= 86400:
+                        day_window_start = now
+                        visits_today = 0
+                    else:
+                        # Wait a short while then continue (no new jobs produced until window resets)
+                        await asyncio.sleep(1)
+                        await asyncio.sleep(0.25)
+                        continue
+
                 while tokens >= 1 and not q.full():
-                    # Check auto-stop by count before producing next job
-                    if MAX_TOTAL_VISITS > 0 and visits_total >= MAX_TOTAL_VISITS:
-                        await q.put(None)
-                        await asyncio.sleep(0.1)
-                        return
                     await q.put(1)
                     tokens -= 1
                     produced += 1
