@@ -164,6 +164,23 @@ Examples:
 
 You can still use `AUTO_STOP_AFTER_HOURS` to explicitly stop the run after a certain number of hours; if both are set, the generator will stop when either condition is met.
 
+Pause log
+----------
+
+When the daily cap is reached the generator logs an informational message so you can detect the pause in container logs. The message looks like:
+
+```
+[loadgen] daily cap reached (10000). Pausing production until window reset.
+```
+
+Quick way to find it in container logs:
+
+```bash
+docker compose logs matomo_loadgen | grep "daily cap reached"
+```
+
+This helps you confirm the generator paused due to the per-24-hour `MAX_TOTAL_VISITS` limit and not due to an error or container restart.
+
 ### Extended Visit Duration
 The load generator simulates **realistic visit durations** to create more accurate engagement metrics:
 - **Configurable duration range**: Set `VISIT_DURATION_MIN` and `VISIT_DURATION_MAX` in minutes (default: 1-8 minutes)

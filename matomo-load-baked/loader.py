@@ -116,6 +116,24 @@ def choose_action_pages(num_pvs: int, want_search: bool, want_outlink: bool, wan
 
     return pick(want_search), pick(want_outlink), pick(want_download)
 
+
+def check_daily_cap(now, day_start, visits_today_local, max_total):
+    """Return (should_pause, new_day_start, new_visits_today)
+
+    should_pause: True if production should pause (cap reached and window not expired)
+    new_day_start: updated day window start timestamp (reset if window expired)
+    new_visits_today: updated visits_today (reset if window expired)
+    """
+    if max_total <= 0:
+        return False, day_start, visits_today_local
+    # If window expired, reset
+    if now - day_start >= 86400:
+        return False, now, 0
+    # Pause if we've hit or exceeded cap
+    if visits_today_local >= max_total:
+        return True, day_start, visits_today_local
+    return False, day_start, visits_today_local
+
 async def send_hit(session, params, headers):
     try:
         async with session.get(MATOMO_URL, params=params, headers=headers) as resp:
@@ -185,10 +203,8 @@ async def visit(session, urls):
         # Add outlink tracking if this is the outlink pageview
         elif i + 1 == outlink_pageview:
             outlink_url = random.choice(OUTLINKS)
-            # urlref must point to the page that contained the link
-            params['urlref'] = page_url
+            # Set the clicked link; keep params['url'] as the page URL where the link was clicked
             params['link'] = outlink_url
-            params['url'] = outlink_url  # Matomo recommendation: url contains the clicked href
             params['action_name'] = f'Outlink: {outlink_url}'
         
         # Add download tracking if this is the download pageview
@@ -202,10 +218,8 @@ async def visit(session, urls):
                 base_url = f"{parsed.scheme}://{parsed.netloc}"
                 download_url = urllib.parse.urljoin(base_url, download_file)
 
-            # urlref must point to the page that contained the download link
-            params['urlref'] = page_url
+            # Set download parameter; keep params['url'] as the page URL where the download was initiated
             params['download'] = download_url
-            params['url'] = download_url  # Matomo recommendation: url contains the download path/URL
             params['action_name'] = f'Download: {download_url.split("/")[-1]}'
         
     # Update last_page_url so the next pageview can use it as urlref
@@ -296,16 +310,15 @@ async def main():
                     tokens = CONCURRENCY
 
                 produced = 0
-                # If a daily cap is configured, pause producing when reached until 24h window resets
-                if MAX_TOTAL_VISITS > 0 and visits_today >= MAX_TOTAL_VISITS:
-                    # if the day window has passed, reset the counter
-                    if now - day_window_start >= 86400:
-                        day_window_start = now
-                        visits_today = 0
-                    else:
-                        # Wait a short while then continue (no new jobs produced until window resets)
-                        await asyncio.sleep(1)
-                        await asyncio.sleep(0.25)
+                # If a daily cap is configured, use the check_daily_cap helper
+                if MAX_TOTAL_VISITS > 0:
+                    should_pause, new_day_start, new_visits_today = check_daily_cap(now, day_window_start, visits_today, MAX_TOTAL_VISITS)
+                    day_window_start = new_day_start
+                    visits_today = new_visits_today
+                    if should_pause:
+                        logging.info('[loadgen] daily cap reached (%d). Pausing production until window reset.', MAX_TOTAL_VISITS)
+                        # Sleep for a short interval to avoid busy-looping while paused
+                        await asyncio.sleep(5)
                         continue
 
                 while tokens >= 1 and not q.full():
@@ -316,7 +329,7 @@ async def main():
                 await asyncio.sleep(0.25)
 
         async def worker():
-            nonlocal visits_total
+            nonlocal visits_total, visits_today
             while True:
                 job = await q.get()
                 if job is None:
@@ -328,6 +341,7 @@ async def main():
                     pass
                 finally:
                     visits_total += 1
+                    visits_today += 1
                     q.task_done()
 
         workers = [asyncio.create_task(worker()) for _ in range(CONCURRENCY)]
