@@ -25,6 +25,9 @@ services:
       # Outlinks and downloads options
       OUTLINKS_PROBABILITY: "0.10"     # probability (0-1) that a visit includes outlinks
       DOWNLOADS_PROBABILITY: "0.08"    # probability (0-1) that a visit includes downloads
+      # Custom events options
+      CLICK_EVENTS_PROBABILITY: "0.25" # probability (0-1) that a visit includes click events
+      RANDOM_EVENTS_PROBABILITY: "0.12" # probability (0-1) that a visit includes random events
     volumes:
       - ./config:/config
 

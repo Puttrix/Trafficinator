@@ -14,6 +14,7 @@ It helps you **stress test Matomo’s frontend performance** when handling large
   - Rotates **user agents** and **URLs** to create diverse report data  
   - **Site search simulation** with configurable probability and realistic search terms  
   - **Outlinks and downloads tracking** with external URLs and file downloads  
+  - **Custom events tracking** with click events and random user interactions  
   - **Extended visit durations** of 1-8 minutes for realistic engagement metrics  
 
 - **High-volume traffic**  
@@ -84,6 +85,8 @@ environment:
   VISIT_DURATION_MAX: "8.0"       # Maximum visit duration in minutes
   OUTLINKS_PROBABILITY: "0.10"    # Probability (0-1) that a visit includes outlinks
   DOWNLOADS_PROBABILITY: "0.08"   # Probability (0-1) that a visit includes downloads
+  CLICK_EVENTS_PROBABILITY: "0.25" # Probability (0-1) that a visit includes click events
+  RANDOM_EVENTS_PROBABILITY: "0.12" # Probability (0-1) that a visit includes random events
 ```
 
 ### URL Structure  
@@ -124,9 +127,36 @@ The load generator includes **realistic outlinks and download behavior**:
 
 This generates data for Matomo's **Behavior** → **Outlinks** and **Behavior** → **Downloads** reports, providing insights into user interaction with external content and file downloads.
 
-### Debugging outlinks & downloads
+### Custom Events Simulation
+The load generator includes **realistic custom events tracking** to simulate user interactions:
 
-If you don't see outlinks or downloads in Matomo, use the included debug helpers:
+- **Click Events (25% probability)**: UI interaction events including:
+  - **Navigation**: Menu clicks, button clicks, link clicks
+  - **UI Components**: Tab clicks, accordion clicks, modal opens, image clicks
+  - **Social**: Share buttons, like buttons
+  - **Forms**: Submit actions, input focus events
+  - **Video**: Play/pause controls
+  - **Call-to-Actions**: Free trial, quote requests
+
+- **Random Events (12% probability)**: Behavioral and system events including:
+  - **Engagement**: Page scrolling, time on page tracking
+  - **Performance**: Load time measurements
+  - **Errors**: 404 errors, form validation failures
+  - **Features**: Tool usage, filter/sort actions
+  - **Content**: Print, bookmark actions
+  - **Mobile**: Swipe, tap gestures
+  - **Analytics**: Conversion goals, exit intent
+  - **User**: Login/logout actions
+
+- **Smart placement**: Events occur randomly within visit pageviews (never as first action)
+- **Rich metadata**: Each event includes category, action, name, and optional numeric values
+- **Matomo compliance**: Uses proper event tracking parameters (`e_c`, `e_a`, `e_n`, `e_v`)
+
+This generates comprehensive data for Matomo's **Behavior** → **Events** reports, providing insights into user interactions, engagement patterns, and feature usage beyond basic pageviews.
+
+### Debugging outlinks, downloads & custom events
+
+If you don't see outlinks, downloads, or custom events in Matomo, use the included debug helpers:
 
 - `matomo-load-baked/debug_build_requests.py` — builds and prints the exact Matomo request URLs for a few simulated visits (no network). Good for quick inspection.
 - Runtime debug: enable debug logging and limit visits so you can watch requests in the container logs.
@@ -137,21 +167,25 @@ Example quick test (runs a short load and exits):
 # Run with verbose logs and stop after 50 visits
 LOG_LEVEL=DEBUG MAX_TOTAL_VISITS=50 CONCURRENCY=5 docker compose up --build --abort-on-container-exit
 
-# After run: check visitor log / Outlinks / Downloads in Matomo and container logs
+# After run: check visitor log / Outlinks / Downloads / Events in Matomo and container logs
 docker compose logs matomo_loadgen
 ```
 
-If outlinks/downloads still don't appear in Matomo, check the Matomo server access logs for `matomo.php` requests and verify the querystring contains `link=` or `download=` and a `urlref=` parameter.
+If outlinks/downloads/events still don't appear in Matomo, check the Matomo server access logs for `matomo.php` requests and verify the querystring contains the expected parameters:
+- Outlinks: `link=` and `urlref=` parameters
+- Downloads: `download=` and `urlref=` parameters  
+- Custom Events: `e_c=`, `e_a=`, `e_n=` parameters (and optional `e_v=`)
 
 ### Behavior guarantees
 
-The load generator now enforces a few guarantees that help Matomo classify events correctly:
+The load generator enforces several guarantees that help Matomo classify events correctly:
 
-- Outlinks, Downloads and Site Search will never be the *first* action in a visit. A regular pageview always precedes any of these events (when the visit contains multiple pageviews).
-- For outlink and download hits the generator sets `urlref` to the page URL that contained the link/download. This improves Matomo's ability to attribute and display the click/download in the Outlinks/Downloads reports.
-- Download entries that are configured as relative paths are converted to fully-qualified URLs using the page's base URL before being sent to Matomo.
+- **Never first action**: Outlinks, Downloads, Site Search, and Custom Events will never be the *first* action in a visit. A regular pageview always precedes any of these events (when the visit contains multiple pageviews).
+- **Proper attribution**: For outlink and download hits the generator sets `urlref` to the page URL that contained the link/download. This improves Matomo's ability to attribute and display the click/download in the Outlinks/Downloads reports.
+- **URL normalization**: Download entries that are configured as relative paths are converted to fully-qualified URLs using the page's base URL before being sent to Matomo.
+- **Event compliance**: Custom events use Matomo's standard event tracking parameters and include proper referrer information for accurate attribution.
 
-These changes are implemented in `matomo-load-baked/loader.py`. Use the debug script and container logs (see above) to verify requests include `urlref`, `link`, or `download` as expected.
+These changes are implemented in `matomo-load-baked/loader.py`. Use the debug script and container logs (see above) to verify requests include the expected parameters for each event type.
 
 ### Daily cap behavior (MAX_TOTAL_VISITS)
 
@@ -245,9 +279,9 @@ Choose one of these options:
 
 4. **Monitor and analyze**  
    - Check Matomo reports for performance bottlenecks
-   - Identify slow-loading reports (Pages, Visitors, Behavior Flow, Site Search, Outlinks, Downloads)
+   - Identify slow-loading reports (Pages, Visitors, Behavior Flow, Site Search, Outlinks, Downloads, Events)
    - Note database query performance and frontend rendering times
-   - Review comprehensive analytics: site search, outlinks, downloads, session duration, engagement metrics
+   - Review comprehensive analytics: site search, outlinks, downloads, custom events, session duration, engagement metrics
 
 5. **Optimize Matomo settings**  
    - Tune archiving processes

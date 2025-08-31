@@ -35,6 +35,10 @@ VISIT_DURATION_MAX = float(os.environ.get("VISIT_DURATION_MAX", "8.0"))  # Maxim
 OUTLINKS_PROBABILITY = float(os.environ.get("OUTLINKS_PROBABILITY", "0.10"))  # 10% of visits will have outlinks
 DOWNLOADS_PROBABILITY = float(os.environ.get("DOWNLOADS_PROBABILITY", "0.08"))  # 8% of visits will have downloads
 
+# Custom events configuration
+CLICK_EVENTS_PROBABILITY = float(os.environ.get("CLICK_EVENTS_PROBABILITY", "0.25"))  # 25% of visits will have click events
+RANDOM_EVENTS_PROBABILITY = float(os.environ.get("RANDOM_EVENTS_PROBABILITY", "0.12"))  # 12% of visits will have random events
+
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
@@ -77,6 +81,46 @@ DOWNLOADS = [
     '/assets/images.zip', '/downloads/source-code.zip'
 ]
 
+# Click events for UI interaction tracking
+CLICK_EVENTS = [
+    {'category': 'Navigation', 'action': 'Menu Click', 'name': 'Main Menu', 'value': None},
+    {'category': 'Navigation', 'action': 'Button Click', 'name': 'Get Started', 'value': None},
+    {'category': 'Navigation', 'action': 'Link Click', 'name': 'Learn More', 'value': None},
+    {'category': 'UI', 'action': 'Tab Click', 'name': 'Product Features', 'value': None},
+    {'category': 'UI', 'action': 'Accordion Click', 'name': 'FAQ Section', 'value': None},
+    {'category': 'UI', 'action': 'Modal Open', 'name': 'Contact Form', 'value': None},
+    {'category': 'UI', 'action': 'Image Click', 'name': 'Product Gallery', 'value': None},
+    {'category': 'Social', 'action': 'Share Click', 'name': 'Twitter Share', 'value': None},
+    {'category': 'Social', 'action': 'Share Click', 'name': 'Facebook Share', 'value': None},
+    {'category': 'Social', 'action': 'Like Click', 'name': 'Article Like', 'value': None},
+    {'category': 'Form', 'action': 'Submit', 'name': 'Newsletter Signup', 'value': None},
+    {'category': 'Form', 'action': 'Focus', 'name': 'Search Input', 'value': None},
+    {'category': 'Video', 'action': 'Play', 'name': 'Tutorial Video', 'value': None},
+    {'category': 'Video', 'action': 'Pause', 'name': 'Product Demo', 'value': None},
+    {'category': 'CTA', 'action': 'Click', 'name': 'Free Trial', 'value': None},
+    {'category': 'CTA', 'action': 'Click', 'name': 'Request Quote', 'value': None},
+]
+
+# Random events for misc user interactions
+RANDOM_EVENTS = [
+    {'category': 'Engagement', 'action': 'Scroll', 'name': 'Page Bottom', 'value': 100},
+    {'category': 'Engagement', 'action': 'Time on Page', 'name': 'Long Read', 'value': 300},
+    {'category': 'Performance', 'action': 'Load Time', 'name': 'Page Load', 'value': 1200},
+    {'category': 'Error', 'action': '404 Error', 'name': 'Broken Link', 'value': None},
+    {'category': 'Error', 'action': 'Form Error', 'name': 'Validation Failed', 'value': None},
+    {'category': 'Feature', 'action': 'Tool Usage', 'name': 'Calculator', 'value': 1},
+    {'category': 'Feature', 'action': 'Filter Applied', 'name': 'Product Filter', 'value': None},
+    {'category': 'Feature', 'action': 'Sort Applied', 'name': 'Price Sort', 'value': None},
+    {'category': 'Content', 'action': 'Print', 'name': 'Article Print', 'value': None},
+    {'category': 'Content', 'action': 'Bookmark', 'name': 'Page Bookmark', 'value': None},
+    {'category': 'Mobile', 'action': 'Swipe', 'name': 'Image Gallery', 'value': None},
+    {'category': 'Mobile', 'action': 'Tap', 'name': 'Phone Number', 'value': None},
+    {'category': 'Analytics', 'action': 'Conversion', 'name': 'Goal Complete', 'value': 50},
+    {'category': 'Analytics', 'action': 'Exit Intent', 'name': 'Modal Trigger', 'value': None},
+    {'category': 'User', 'action': 'Login', 'name': 'User Login', 'value': None},
+    {'category': 'User', 'action': 'Logout', 'name': 'User Logout', 'value': None},
+]
+
 def read_urls(path):
     urls = []
     with open(path, 'r', encoding='utf-8') as f:
@@ -98,8 +142,8 @@ LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s %(levelname)s %(message)s')
 
 
-def choose_action_pages(num_pvs: int, want_search: bool, want_outlink: bool, want_download: bool):
-    """Choose pageview indices for search/outlink/download actions.
+def choose_action_pages(num_pvs: int, want_search: bool, want_outlink: bool, want_download: bool, want_click_event: bool, want_random_event: bool):
+    """Choose pageview indices for search/outlink/download/event actions.
 
     Guarantees:
     - If num_pvs <= 1 => all actions disabled (-1).
@@ -109,12 +153,12 @@ def choose_action_pages(num_pvs: int, want_search: bool, want_outlink: bool, wan
     randomness for selection so callers should treat results as non-deterministic.
     """
     if num_pvs <= 1:
-        return -1, -1, -1
+        return -1, -1, -1, -1, -1
 
     def pick(want: bool):
         return random.randint(2, num_pvs) if want else -1
 
-    return pick(want_search), pick(want_outlink), pick(want_download)
+    return pick(want_search), pick(want_outlink), pick(want_download), pick(want_click_event), pick(want_random_event)
 
 
 def check_daily_cap(now, day_start, visits_today_local, max_total):
@@ -149,22 +193,18 @@ async def visit(session, urls):
     ua = random.choice(USER_AGENTS)
     ref = random.choice(urls)
     
-    # Determine if this visit will include site search, outlinks, or downloads
+    # Determine if this visit will include site search, outlinks, downloads, or custom events
     has_search = random.random() < SITESEARCH_PROBABILITY
     has_outlink = random.random() < OUTLINKS_PROBABILITY
     has_download = random.random() < DOWNLOADS_PROBABILITY
+    has_click_event = random.random() < CLICK_EVENTS_PROBABILITY
+    has_random_event = random.random() < RANDOM_EVENTS_PROBABILITY
 
-    # Ensure search/outlink/download are NEVER the first pageview.
+    # Ensure search/outlink/download/events are NEVER the first pageview.
     # If there's only one pageview in the visit, disable these actions.
-    if num_pvs <= 1:
-        search_pageview = -1
-        outlink_pageview = -1
-        download_pageview = -1
-    else:
-        # Pick a pageview in the range 2..num_pvs (so not the first PV)
-        search_pageview = random.randint(2, num_pvs) if has_search else -1
-        outlink_pageview = random.randint(2, num_pvs) if has_outlink else -1
-        download_pageview = random.randint(2, num_pvs) if has_download else -1
+    search_pageview, outlink_pageview, download_pageview, click_event_pageview, random_event_pageview = choose_action_pages(
+        num_pvs, has_search, has_outlink, has_download, has_click_event, has_random_event
+    )
 
     for i in range(num_pvs):
         url = random.choice(urls)
@@ -222,6 +262,26 @@ async def visit(session, urls):
             params['download'] = download_url
             params['action_name'] = f'Download: {download_url.split("/")[-1]}'
         
+        # Add click event tracking if this is the click event pageview
+        elif i + 1 == click_event_pageview:
+            click_event = random.choice(CLICK_EVENTS)
+            params['e_c'] = click_event['category']
+            params['e_a'] = click_event['action']
+            params['e_n'] = click_event['name']
+            if click_event['value'] is not None:
+                params['e_v'] = click_event['value']
+            params['action_name'] = f'Event: {click_event["action"]} - {click_event["name"]}'
+        
+        # Add random event tracking if this is the random event pageview
+        elif i + 1 == random_event_pageview:
+            random_event = random.choice(RANDOM_EVENTS)
+            params['e_c'] = random_event['category']
+            params['e_a'] = random_event['action']
+            params['e_n'] = random_event['name']
+            if random_event['value'] is not None:
+                params['e_v'] = random_event['value']
+            params['action_name'] = f'Event: {random_event["action"]} - {random_event["name"]}'
+        
     # Update last_page_url so the next pageview can use it as urlref
     # For outlink/download we keep last_page_url as the original page containing the link
     # so subsequent pageviews still show a sensible referrer.
@@ -236,12 +296,15 @@ async def visit(session, urls):
             request_qs = str(params)
         request_url = f"{MATOMO_URL}?{request_qs}"
 
-        # Log only the outlink/download hits at INFO level to avoid noise
+        # Log only the outlink/download/event hits at INFO level to avoid noise
         if 'download' in params:
             logging.info('Sending download hit: visitor=%s file=%s referer=%s', vid, params.get('download'), params.get('urlref'))
             logging.debug('Matomo request: %s', request_url)
         elif 'link' in params:
             logging.info('Sending outlink hit: visitor=%s link=%s referer=%s', vid, params.get('link'), params.get('urlref'))
+            logging.debug('Matomo request: %s', request_url)
+        elif 'e_c' in params:
+            logging.info('Sending custom event: visitor=%s category=%s action=%s name=%s value=%s', vid, params.get('e_c'), params.get('e_a'), params.get('e_n'), params.get('e_v', 'None'))
             logging.debug('Matomo request: %s', request_url)
         else:
             logging.debug('Sending pageview: visitor=%s action=%s', vid, params.get('action_name'))
@@ -252,6 +315,7 @@ async def visit(session, urls):
             # user clicked away; keep last_page_url as the page that contained the link
             last_page_url = page_url
         else:
+            # for custom events and regular pageviews, use the current page URL
             last_page_url = page_url
         if i < num_pvs - 1:
             await asyncio.sleep(random.uniform(PAUSE_BETWEEN_PVS_MIN, PAUSE_BETWEEN_PVS_MAX))
