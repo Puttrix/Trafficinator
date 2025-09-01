@@ -75,12 +75,25 @@ All configuration is done via environment variables in `docker-compose.yml`:
 - `RANDOMIZE_VISITOR_COUNTRIES` - Enable realistic country distribution (true/false)
   - **Note**: When enabled, requires `MATOMO_TOKEN_AUTH` to be set for IP overriding to work
 
+### Ecommerce Tracking
+- `ECOMMERCE_PROBABILITY` - Probability (0-1) that a visit makes a purchase (default: 0.05 = 5%)
+- `ECOMMERCE_ORDER_VALUE_MIN/MAX` - Order value range (default: $15.99-$299.99)
+- `ECOMMERCE_ITEMS_MIN/MAX` - Items per order range (default: 1-5)
+- `ECOMMERCE_TAX_RATE` - Tax rate as decimal (default: 0.10 = 10%)
+- `ECOMMERCE_SHIPPING_RATES` - Available shipping costs, comma-separated (default: "0,5.99,9.99,15.99")
+- `ECOMMERCE_CURRENCY` - Currency code for orders (default: "USD", format: ISO 4217)
+
+### Localization
+- `TIMEZONE` - Timezone for visit timestamps (default: "UTC", examples: "America/New_York", "Europe/Stockholm")
+
 ## Key Patterns
 
 - **Realistic traffic simulation**: User agents rotation, referrer sources, country distribution
 - **Visit tracking**: Proper visitor IDs and session management
 - **Geolocation support**: Randomized country distribution with IP override capability
-- **Advanced features**: Site search, outlinks, downloads, custom events
+- **Advanced features**: Site search, outlinks, downloads, custom events, ecommerce orders
+- **Ecommerce simulation**: Realistic product catalog with 50+ products across 5 categories, multi-currency support
+- **Localization support**: Configurable timezones for accurate timestamp tracking
 - **Rate limiting**: Token-bucket algorithm for smooth traffic distribution
 - **Graceful shutdown**: Signal handlers for clean container stops
 - **Auto-stop functionality**: Time-based and visit-count limits for controlled test runs

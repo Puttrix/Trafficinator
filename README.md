@@ -15,6 +15,7 @@ It helps you **stress test Matomo’s frontend performance** when handling large
   - **Site search simulation** with configurable probability and realistic search terms  
   - **Outlinks and downloads tracking** with external URLs and file downloads  
   - **Custom events tracking** with click events and random user interactions  
+  - **Ecommerce orders simulation** with realistic product catalog and purchase flows
   - **Extended visit durations** of 1-8 minutes for realistic engagement metrics
   - **Traffic source diversification** with search engines, social media, referrals, and direct traffic
   - **Global visitor simulation** with realistic country distribution using authentic IP ranges  
@@ -128,6 +129,11 @@ environment:
   RANDOM_EVENTS_PROBABILITY: "0.12" # Probability (0-1) that a visit includes random events
   DIRECT_TRAFFIC_PROBABILITY: "0.30" # Probability (0-1) for direct traffic (30% direct, 70% with referrers)
   RANDOMIZE_VISITOR_COUNTRIES: "true" # Enable realistic country distribution (true/false)
+  ECOMMERCE_PROBABILITY: "0.05"       # Probability (0-1) that a visit makes a purchase (5% = realistic)
+  ECOMMERCE_ORDER_VALUE_MIN: "15.99"  # Minimum order value
+  ECOMMERCE_ORDER_VALUE_MAX: "299.99" # Maximum order value
+  ECOMMERCE_CURRENCY: "USD"           # Currency code for ecommerce orders (ISO 4217)
+  TIMEZONE: "UTC"                     # Timezone for visit timestamps (e.g., "America/New_York")
 ```
 
 ### URL Structure  
@@ -250,6 +256,61 @@ The load generator includes **realistic visitor country distribution** using act
 **Note**: Without the API token, Matomo will reject requests with IP overriding for security reasons, and you'll see "requires valid token_auth" errors in Matomo logs.
 
 This creates realistic data for Matomo's **Visitors** → **Locations** reports, including country, region, and city breakdowns (depending on your GeoIP database accuracy).
+
+### Timezone Configuration
+The load generator supports **configurable timezones** for accurate visit timestamp tracking:
+
+**Default Behavior**: All visits are tracked with UTC timestamps when `TIMEZONE="UTC"` (default)
+
+**Custom Timezone**: Set any valid timezone identifier to track visits in that local time:
+```yaml
+TIMEZONE: "America/New_York"      # Eastern Time
+TIMEZONE: "Europe/Stockholm"      # Swedish Time  
+TIMEZONE: "Asia/Tokyo"            # Japan Time
+TIMEZONE: "Australia/Sydney"      # Australian Eastern Time
+```
+
+**How it works**: The generator uses the Matomo `cdt` parameter to set custom visit timestamps in the specified timezone, ensuring your analytics data reflects the correct local time for visitor activities.
+
+**Benefits**:
+- **Accurate reporting**: Visit data shows in the correct local timezone for your business
+- **Better insights**: Understand visitor behavior patterns in your operational timezone
+- **Regional analysis**: Match timestamp data with your local business hours and marketing campaigns
+
+### Ecommerce Orders Simulation
+The load generator includes **realistic ecommerce order tracking** to simulate online purchases:
+
+**Product Catalog**: 50+ products across 5 categories:
+- **Electronics** (10 products): Smartphones, laptops, tablets, headphones, cameras, smart watches
+- **Clothing** (10 products): T-shirts, pants, shoes, jackets, dresses, sweaters, hats
+- **Books** (10 products): Programming guides, novels, cookbooks, textbooks, eBooks
+- **Home & Garden** (10 products): Furniture, appliances, tools, garden supplies, decor
+- **Sports** (10 products): Equipment, clothing, accessories, fitness trackers
+
+**Purchase Patterns**:
+- **Order frequency**: 5% of visits make a purchase by default (configurable)
+- **Order values**: $15.99 - $299.99 range with realistic pricing variations
+- **Items per order**: 1-5 items with weighted preference for single items (60%)
+- **Price calculation**: Subtotal + shipping + tax = total revenue
+- **Order placement**: Purchases occur on the final pageview (checkout completion)
+
+**Configuration Options**:
+```yaml
+ECOMMERCE_PROBABILITY: "0.05"       # 5% of visits make purchases
+ECOMMERCE_ORDER_VALUE_MIN: "15.99"  # Minimum order value
+ECOMMERCE_ORDER_VALUE_MAX: "299.99" # Maximum order value  
+ECOMMERCE_ITEMS_MIN: "1"            # Minimum items per order
+ECOMMERCE_ITEMS_MAX: "5"            # Maximum items per order
+ECOMMERCE_TAX_RATE: "0.10"          # Tax rate (10%)
+ECOMMERCE_SHIPPING_RATES: "0,5.99,9.99,15.99" # Shipping cost options
+ECOMMERCE_CURRENCY: "USD"           # Currency code (ISO 4217)
+```
+
+**Matomo Integration**: Uses proper ecommerce tracking parameters (`idgoal=0`, `ec_id`, `ec_items`, `revenue`, `ec_st`, `ec_tx`, `ec_currency`) with multi-currency support to generate data for:
+- **Ecommerce** → **Orders** reports
+- **Ecommerce** → **Products** reports  
+- **Ecommerce** → **Sales** reports
+- **Goals** → **Ecommerce Orders** conversion tracking
 
 ### Debugging outlinks, downloads & custom events
 
@@ -384,9 +445,9 @@ Choose one of these options:
 
 4. **Monitor and analyze**  
    - Check Matomo reports for performance bottlenecks
-   - Identify slow-loading reports (Pages, Visitors, Behavior Flow, Site Search, Outlinks, Downloads, Events)
+   - Identify slow-loading reports (Pages, Visitors, Behavior Flow, Site Search, Outlinks, Downloads, Events, Ecommerce)
    - Note database query performance and frontend rendering times
-   - Review comprehensive analytics: site search, outlinks, downloads, custom events, session duration, engagement metrics, traffic sources, and geolocation data
+   - Review comprehensive analytics: site search, outlinks, downloads, custom events, ecommerce orders, session duration, engagement metrics, traffic sources, and geolocation data
 
 5. **Optimize Matomo settings**  
    - Tune archiving processes

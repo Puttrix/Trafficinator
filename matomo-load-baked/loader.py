@@ -8,6 +8,8 @@ import aiohttp
 import logging
 import urllib.parse
 import ipaddress
+from datetime import datetime
+import pytz
 
 # ---- Configuration via environment variables ----
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
@@ -46,6 +48,19 @@ DIRECT_TRAFFIC_PROBABILITY = float(os.environ.get("DIRECT_TRAFFIC_PROBABILITY", 
 
 # Geolocation configuration
 RANDOMIZE_VISITOR_COUNTRIES = os.environ.get("RANDOMIZE_VISITOR_COUNTRIES", "true").lower() == "true"
+
+# Ecommerce configuration
+ECOMMERCE_PROBABILITY = float(os.environ.get("ECOMMERCE_PROBABILITY", "0.05"))  # 5% of visits make a purchase
+ECOMMERCE_ORDER_VALUE_MIN = float(os.environ.get("ECOMMERCE_ORDER_VALUE_MIN", "15.99"))
+ECOMMERCE_ORDER_VALUE_MAX = float(os.environ.get("ECOMMERCE_ORDER_VALUE_MAX", "299.99"))
+ECOMMERCE_ITEMS_MIN = int(os.environ.get("ECOMMERCE_ITEMS_MIN", "1"))
+ECOMMERCE_ITEMS_MAX = int(os.environ.get("ECOMMERCE_ITEMS_MAX", "5"))
+ECOMMERCE_TAX_RATE = float(os.environ.get("ECOMMERCE_TAX_RATE", "0.10"))  # 10% tax rate
+ECOMMERCE_SHIPPING_RATES = list(map(float, os.environ.get("ECOMMERCE_SHIPPING_RATES", "0,5.99,9.99,15.99").split(",")))
+ECOMMERCE_CURRENCY = os.environ.get("ECOMMERCE_CURRENCY", "USD")  # Currency code for orders
+
+# Timezone configuration
+TIMEZONE = os.environ.get("TIMEZONE", "UTC")  # Timezone for visit timestamps
 
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
@@ -295,6 +310,70 @@ COUNTRY_IP_RANGES = {
     }
 }
 
+# Ecommerce products database for realistic order simulation
+ECOMMERCE_PRODUCTS = {
+    'Electronics': [
+        {'sku': 'PHONE-001', 'name': 'Smartphone Pro Max', 'price': 899.99},
+        {'sku': 'PHONE-002', 'name': 'Budget Smartphone', 'price': 199.99},
+        {'sku': 'LAPTOP-001', 'name': 'Gaming Laptop', 'price': 1299.99},
+        {'sku': 'LAPTOP-002', 'name': 'Business Laptop', 'price': 749.99},
+        {'sku': 'TABLET-001', 'name': 'Pro Tablet 11"', 'price': 599.99},
+        {'sku': 'TABLET-002', 'name': 'Basic Tablet', 'price': 149.99},
+        {'sku': 'HEADPHONE-001', 'name': 'Wireless Headphones', 'price': 249.99},
+        {'sku': 'HEADPHONE-002', 'name': 'Gaming Headset', 'price': 89.99},
+        {'sku': 'CAMERA-001', 'name': 'Digital Camera', 'price': 549.99},
+        {'sku': 'WATCH-001', 'name': 'Smart Watch', 'price': 299.99}
+    ],
+    'Clothing': [
+        {'sku': 'SHIRT-001', 'name': 'Cotton T-Shirt', 'price': 19.99},
+        {'sku': 'SHIRT-002', 'name': 'Polo Shirt', 'price': 39.99},
+        {'sku': 'PANTS-001', 'name': 'Jeans', 'price': 59.99},
+        {'sku': 'PANTS-002', 'name': 'Chinos', 'price': 49.99},
+        {'sku': 'SHOE-001', 'name': 'Running Shoes', 'price': 89.99},
+        {'sku': 'SHOE-002', 'name': 'Casual Sneakers', 'price': 69.99},
+        {'sku': 'JACKET-001', 'name': 'Winter Jacket', 'price': 129.99},
+        {'sku': 'DRESS-001', 'name': 'Summer Dress', 'price': 79.99},
+        {'sku': 'SWEATER-001', 'name': 'Wool Sweater', 'price': 89.99},
+        {'sku': 'HAT-001', 'name': 'Baseball Cap', 'price': 24.99}
+    ],
+    'Books': [
+        {'sku': 'BOOK-001', 'name': 'Programming Guide', 'price': 45.99},
+        {'sku': 'BOOK-002', 'name': 'Mystery Novel', 'price': 12.99},
+        {'sku': 'BOOK-003', 'name': 'Cook Book', 'price': 29.99},
+        {'sku': 'BOOK-004', 'name': 'Science Textbook', 'price': 89.99},
+        {'sku': 'BOOK-005', 'name': 'Biography', 'price': 19.99},
+        {'sku': 'BOOK-006', 'name': 'Art History', 'price': 59.99},
+        {'sku': 'BOOK-007', 'name': 'Travel Guide', 'price': 24.99},
+        {'sku': 'BOOK-008', 'name': 'Business Strategy', 'price': 34.99},
+        {'sku': 'EBOOK-001', 'name': 'Digital Marketing (eBook)', 'price': 9.99},
+        {'sku': 'EBOOK-002', 'name': 'Fiction Collection (eBook)', 'price': 7.99}
+    ],
+    'Home & Garden': [
+        {'sku': 'FURNITURE-001', 'name': 'Office Chair', 'price': 199.99},
+        {'sku': 'FURNITURE-002', 'name': 'Desk Lamp', 'price': 49.99},
+        {'sku': 'APPLIANCE-001', 'name': 'Coffee Maker', 'price': 89.99},
+        {'sku': 'APPLIANCE-002', 'name': 'Blender', 'price': 69.99},
+        {'sku': 'TOOL-001', 'name': 'Drill Set', 'price': 79.99},
+        {'sku': 'TOOL-002', 'name': 'Screwdriver Kit', 'price': 29.99},
+        {'sku': 'GARDEN-001', 'name': 'Plant Pot Set', 'price': 39.99},
+        {'sku': 'GARDEN-002', 'name': 'Garden Hose', 'price': 34.99},
+        {'sku': 'DECOR-001', 'name': 'Wall Art', 'price': 59.99},
+        {'sku': 'STORAGE-001', 'name': 'Storage Box', 'price': 24.99}
+    ],
+    'Sports': [
+        {'sku': 'SPORT-001', 'name': 'Yoga Mat', 'price': 29.99},
+        {'sku': 'SPORT-002', 'name': 'Dumbbells Set', 'price': 89.99},
+        {'sku': 'SPORT-003', 'name': 'Tennis Racket', 'price': 119.99},
+        {'sku': 'SPORT-004', 'name': 'Basketball', 'price': 34.99},
+        {'sku': 'SPORT-005', 'name': 'Running Shorts', 'price': 24.99},
+        {'sku': 'SPORT-006', 'name': 'Athletic T-Shirt', 'price': 19.99},
+        {'sku': 'SPORT-007', 'name': 'Water Bottle', 'price': 14.99},
+        {'sku': 'SPORT-008', 'name': 'Gym Bag', 'price': 39.99},
+        {'sku': 'SPORT-009', 'name': 'Resistance Bands', 'price': 19.99},
+        {'sku': 'SPORT-010', 'name': 'Fitness Tracker', 'price': 149.99}
+    ]
+}
+
 def read_urls(path):
     urls = []
     with open(path, 'r', encoding='utf-8') as f:
@@ -364,6 +443,83 @@ def choose_country_and_ip():
 def rand_hex(n=16):
     import random
     return ''.join(random.choice('0123456789abcdef') for _ in range(n))
+
+def generate_ecommerce_order():
+    """Generate a realistic ecommerce order with items, pricing, and metadata.
+    
+    Returns:
+        tuple: (order_id, items_json, revenue, subtotal, tax, shipping) or None if no order
+    """
+    if random.random() >= ECOMMERCE_PROBABILITY:
+        return None
+    
+    import json
+    import uuid
+    
+    # Generate unique order ID
+    order_id = str(uuid.uuid4())[:8].upper()
+    
+    # Determine number of items (weighted toward single items)
+    num_items = random.randint(ECOMMERCE_ITEMS_MIN, ECOMMERCE_ITEMS_MAX)
+    weights = [0.6, 0.25, 0.1, 0.04, 0.01]  # Favor 1-2 items
+    if num_items <= len(weights):
+        if random.random() > weights[num_items - 1]:
+            num_items = 1
+    
+    # Select items from different categories
+    selected_items = []
+    categories = list(ECOMMERCE_PRODUCTS.keys())
+    
+    for _ in range(num_items):
+        category = random.choice(categories)
+        product = random.choice(ECOMMERCE_PRODUCTS[category])
+        
+        # Random quantity (mostly 1, sometimes 2-3)
+        quantity = 1 if random.random() < 0.8 else random.randint(2, 3)
+        
+        # Slight price variation (±5%)
+        base_price = product['price']
+        price_variation = random.uniform(0.95, 1.05)
+        final_price = round(base_price * price_variation, 2)
+        
+        # Ensure price within configured range
+        final_price = max(ECOMMERCE_ORDER_VALUE_MIN / num_items, 
+                         min(final_price, ECOMMERCE_ORDER_VALUE_MAX / num_items))
+        
+        # Matomo ecommerce item format: [sku, name, category, price, quantity]
+        item = [
+            product['sku'],
+            product['name'],
+            category,
+            final_price,
+            quantity
+        ]
+        selected_items.append(item)
+    
+    # Calculate order totals
+    subtotal = sum(item[3] * item[4] for item in selected_items)
+    shipping = random.choice(ECOMMERCE_SHIPPING_RATES)
+    tax = round((subtotal + shipping) * ECOMMERCE_TAX_RATE, 2)
+    revenue = round(subtotal + shipping + tax, 2)
+    
+    # Ensure total is within configured range
+    if revenue < ECOMMERCE_ORDER_VALUE_MIN or revenue > ECOMMERCE_ORDER_VALUE_MAX:
+        # Scale items proportionally to fit range
+        target_subtotal = random.uniform(ECOMMERCE_ORDER_VALUE_MIN * 0.8, 
+                                       ECOMMERCE_ORDER_VALUE_MAX * 0.8) - shipping
+        scale_factor = target_subtotal / subtotal
+        
+        for item in selected_items:
+            item[3] = round(item[3] * scale_factor, 2)
+        
+        subtotal = sum(item[3] * item[4] for item in selected_items)
+        tax = round((subtotal + shipping) * ECOMMERCE_TAX_RATE, 2)
+        revenue = round(subtotal + shipping + tax, 2)
+    
+    # Convert items to JSON format for Matomo
+    items_json = json.dumps(selected_items)
+    
+    return order_id, items_json, revenue, subtotal, tax, shipping
 
 # Logging configuration (can be adjusted with environment variable LOG_LEVEL)
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
@@ -435,11 +591,29 @@ async def visit(session, urls):
         num_pvs, has_search, has_outlink, has_download, has_click_event, has_random_event
     )
     
+    # Check if this visit will include an ecommerce order
+    ecommerce_order = generate_ecommerce_order()
+    ecommerce_pageview = -1
+    if ecommerce_order and num_pvs > 1:
+        # Place ecommerce order on the last pageview (checkout completion)
+        ecommerce_pageview = num_pvs
 
     for i in range(num_pvs):
         url = random.choice(urls)
         # Keep the original page URL (the page that contains any outlink/download)
         page_url = url
+
+        # Create timezone-aware timestamp if timezone is set
+        if TIMEZONE != "UTC":
+            try:
+                tz = pytz.timezone(TIMEZONE)
+                current_time = datetime.now(tz)
+                timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
+            except pytz.UnknownTimeZoneError:
+                logging.warning(f"Unknown timezone '{TIMEZONE}', falling back to UTC")
+                timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
         params = {
             'idsite': SITE_ID,
@@ -448,6 +622,7 @@ async def visit(session, urls):
             'action_name': f'LoadTest PV {i+1}/{num_pvs}',
             '_id': vid,
             'rand': random.randint(0, 2**31-1),
+            'cdt': timestamp,
         }
         
         # Add visitor IP for geolocation if enabled
@@ -521,6 +696,18 @@ async def visit(session, urls):
                 params['e_v'] = random_event['value']
             params['action_name'] = f'Event: {random_event["action"]} - {random_event["name"]}'
         
+        # Add ecommerce order tracking if this is the ecommerce pageview
+        elif i + 1 == ecommerce_pageview and ecommerce_order:
+            order_id, items_json, revenue, subtotal, tax, shipping = ecommerce_order
+            params['idgoal'] = '0'  # Required for ecommerce orders
+            params['ec_id'] = order_id
+            params['ec_items'] = items_json
+            params['revenue'] = str(revenue)
+            params['ec_st'] = str(subtotal)
+            params['ec_tx'] = str(tax)
+            if ECOMMERCE_CURRENCY != "USD":
+                params['ec_currency'] = ECOMMERCE_CURRENCY
+            params['action_name'] = f'Ecommerce Order: {order_id} ({ECOMMERCE_CURRENCY} {revenue})'
         # Update last_page_url so the next pageview can use it as urlref
         # For outlink/download we keep last_page_url as the original page containing the link
         # so subsequent pageviews still show a sensible referrer.
@@ -535,7 +722,7 @@ async def visit(session, urls):
             request_qs = str(params)
         request_url = f"{MATOMO_URL}?{request_qs}"
 
-        # Log only the outlink/download/event hits at INFO level to avoid noise
+        # Log only the outlink/download/event/ecommerce hits at INFO level to avoid noise
         if 'download' in params:
             logging.info('Sending download hit: visitor=%s file=%s referer=%s', vid, params.get('download'), params.get('urlref'))
             logging.debug('Matomo request: %s', request_url)
@@ -544,6 +731,9 @@ async def visit(session, urls):
             logging.debug('Matomo request: %s', request_url)
         elif 'e_c' in params:
             logging.info('Sending custom event: visitor=%s category=%s action=%s name=%s value=%s', vid, params.get('e_c'), params.get('e_a'), params.get('e_n'), params.get('e_v', 'None'))
+            logging.debug('Matomo request: %s', request_url)
+        elif 'ec_id' in params:
+            logging.info('Sending ecommerce order: visitor=%s order=%s revenue=%s items=%s', vid, params.get('ec_id'), params.get('revenue'), len(eval(params.get('ec_items', '[]'))))
             logging.debug('Matomo request: %s', request_url)
         else:
             logging.debug('Sending pageview: visitor=%s action=%s', vid, params.get('action_name'))

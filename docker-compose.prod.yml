@@ -32,6 +32,17 @@ services:
       DIRECT_TRAFFIC_PROBABILITY: "0.30" # probability (0-1) for direct traffic (30% direct, 70% with referrers)
       # Geolocation options
       RANDOMIZE_VISITOR_COUNTRIES: "true" # enable realistic country distribution (true/false)
+      # Ecommerce options
+      ECOMMERCE_PROBABILITY: "0.05"       # probability (0-1) that a visit makes a purchase (5% = realistic)
+      ECOMMERCE_ORDER_VALUE_MIN: "15.99"  # minimum order value
+      ECOMMERCE_ORDER_VALUE_MAX: "299.99" # maximum order value  
+      ECOMMERCE_ITEMS_MIN: "1"            # minimum items per order
+      ECOMMERCE_ITEMS_MAX: "5"            # maximum items per order
+      ECOMMERCE_TAX_RATE: "0.10"          # tax rate (10%)
+      ECOMMERCE_SHIPPING_RATES: "0,5.99,9.99,15.99" # available shipping costs (comma-separated)
+      ECOMMERCE_CURRENCY: "USD"           # currency code for ecommerce orders (ISO 4217)
+      # Timezone options
+      TIMEZONE: "UTC"                     # timezone for visit timestamps (e.g., "America/New_York", "Europe/Stockholm")
     # Config files are now embedded in the Docker image
     # volumes:
     #   - ./config:/config
