@@ -6,15 +6,15 @@ This document describes how to deploy Trafficinator on your remote machine with 
 
 - Docker and Docker Compose installed on your remote machine
 - Portainer (optional, for easier management)
-- Your `config/urls.txt` file uploaded to the remote machine
 
 ## Setup Steps
 
-### 1. Clone or Upload Files
+### 1. Upload Configuration
 
-Upload these files to your remote machine:
+Upload this file to your remote machine:
 - `docker-compose.prod.yml`
-- `config/` directory with your URLs file
+
+**Note**: Config files (including `urls.txt`) are now embedded in the Docker image - no separate upload needed.
 
 ### 2. Configure Environment Variables
 

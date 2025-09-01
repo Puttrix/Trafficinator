@@ -27,8 +27,9 @@ services:
       # Custom events options
       CLICK_EVENTS_PROBABILITY: "0.25" # probability (0-1) that a visit includes click events
       RANDOM_EVENTS_PROBABILITY: "0.12" # probability (0-1) that a visit includes random events
-    volumes:
-      - ./config:/config
+    # Config files are now embedded in the Docker image
+    # volumes:
+    #   - ./config:/config
     # If you front with Nginx Proxy Manager or a Cloudflare Tunnel container,
     # attach to that external network instead of publishing ports:
     # networks:

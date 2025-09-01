@@ -54,10 +54,19 @@ For production deployments with automatic updates:
 1. **Set up GitHub Container Registry**: The included GitHub Actions workflow automatically builds and pushes images to GHCR
 2. **Deploy with auto-updates**:
    ```bash
-   # Upload docker-compose.prod.yml and config/ to your remote machine
+   # Upload docker-compose.prod.yml to your remote machine
    docker-compose -f docker-compose.prod.yml up -d
    ```
-3. **Auto-updates**: Watchtower monitors for new images every 30 seconds and automatically updates
+4. **Auto-updates**: Watchtower monitors for new images every 30 seconds and automatically updates
+
+#### Portainer Stack Deployment
+You can paste `docker-compose.prod.yml` directly into a Portainer stack:
+
+1. **Portainer** → **Stacks** → **Add Stack**
+2. **Paste compose content** and update environment variables
+3. **Deploy stack**
+
+**No file uploads needed**: Config files (including `urls.txt`) are now embedded directly in the Docker image during build.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete remote deployment instructions.
 
@@ -93,7 +102,7 @@ docker-compose -f docker-compose.prod.yml down
 ```
 
 ### Configuration  
-Edit `docker-compose.yml` to customize your load test:
+Edit `docker-compose.yml` (development) or `docker-compose.prod.yml` (production) to customize your load test:
 
 ```yaml
 environment:
@@ -117,10 +126,12 @@ environment:
 ```
 
 ### URL Structure  
-The load generator uses a **3-level hierarchical URL structure** from `config/urls.txt`:
+The load generator uses a **3-level hierarchical URL structure** with **2,000 pre-built URLs embedded in the image**:
 - **10 main categories**: products, blog, support, company, resources, news, services, solutions, documentation, community
 - **5 subcategories each**: e.g., products → hardware, software, accessories, bundles, enterprise  
 - **40 pages per subcategory**: 2,000 total URLs for comprehensive testing
+
+**No configuration needed**: URLs are built into the Docker image for immediate use.
 
 This creates realistic navigation patterns that will generate rich data in Matomo's:
 - Page hierarchy reports

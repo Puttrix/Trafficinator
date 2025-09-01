@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY loader.py /app/loader.py
 
+# Copy config files into the container
+COPY ../config /config
+
 # A basic healthcheck: process is alive and DNS can resolve the host in MATOMO_URL (optional best-effort)
 HEALTHCHECK --interval=1m --timeout=10s --start-period=20s --retries=3 \
   CMD python -c "import os,sys,urllib.parse,socket; u=urllib.parse.urlparse(os.getenv('MATOMO_URL','')); \
