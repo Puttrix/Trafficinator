@@ -282,10 +282,10 @@ async def visit(session, urls):
                 params['e_v'] = random_event['value']
             params['action_name'] = f'Event: {random_event["action"]} - {random_event["name"]}'
         
-    # Update last_page_url so the next pageview can use it as urlref
-    # For outlink/download we keep last_page_url as the original page containing the link
-    # so subsequent pageviews still show a sensible referrer.
-    # (last_page_url is used at the top of the loop for non-first PVs)
+        # Update last_page_url so the next pageview can use it as urlref
+        # For outlink/download we keep last_page_url as the original page containing the link
+        # so subsequent pageviews still show a sensible referrer.
+        # (last_page_url is used at the top of the loop for non-first PVs)
 
         headers = {'User-Agent': ua}
 
@@ -310,13 +310,15 @@ async def visit(session, urls):
             logging.debug('Sending pageview: visitor=%s action=%s', vid, params.get('action_name'))
 
         await send_hit(session, params, headers)
-        # set last_page_url for next iteration
+        
+        # Set last_page_url for next iteration
         if i + 1 == outlink_pageview or i + 1 == download_pageview:
             # user clicked away; keep last_page_url as the page that contained the link
             last_page_url = page_url
         else:
             # for custom events and regular pageviews, use the current page URL
             last_page_url = page_url
+            
         if i < num_pvs - 1:
             await asyncio.sleep(random.uniform(PAUSE_BETWEEN_PVS_MIN, PAUSE_BETWEEN_PVS_MAX))
     
