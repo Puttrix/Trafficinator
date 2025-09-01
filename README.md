@@ -156,25 +156,33 @@ This generates comprehensive data for Matomo's **Behavior** → **Events** repor
 
 ### Debugging outlinks, downloads & custom events
 
-If you don't see outlinks, downloads, or custom events in Matomo, use the included debug helpers:
+If you don't see outlinks, downloads, or custom events in Matomo, enable debug logging to see exactly what requests are being sent:
 
-- `matomo-load-baked/debug_build_requests.py` — builds and prints the exact Matomo request URLs for a few simulated visits (no network). Good for quick inspection.
-- Runtime debug: enable debug logging and limit visits so you can watch requests in the container logs.
-
-Example quick test (runs a short load and exits):
+Example debug test (runs with verbose logs and stops after 50 visits):
 
 ```bash
-# Run with verbose logs and stop after 50 visits
+# Add LOG_LEVEL to docker-compose.yml environment section
+LOG_LEVEL: "DEBUG"
+
+# Or run with environment override
 LOG_LEVEL=DEBUG MAX_TOTAL_VISITS=50 CONCURRENCY=5 docker compose up --build --abort-on-container-exit
 
-# After run: check visitor log / Outlinks / Downloads / Events in Matomo and container logs
+# Check container logs for detailed request information
 docker compose logs matomo_loadgen
 ```
 
-If outlinks/downloads/events still don't appear in Matomo, check the Matomo server access logs for `matomo.php` requests and verify the querystring contains the expected parameters:
-- Outlinks: `link=` and `urlref=` parameters
-- Downloads: `download=` and `urlref=` parameters  
-- Custom Events: `e_c=`, `e_a=`, `e_n=` parameters (and optional `e_v=`)
+In the debug logs, look for these request types:
+- **Outlinks**: Lines showing "Sending outlink hit" with `link=` and `urlref=` parameters
+- **Downloads**: Lines showing "Sending download hit" with `download=` and `urlref=` parameters  
+- **Custom Events**: Lines showing "Sending custom event" with `e_c=`, `e_a=`, `e_n=` parameters (and optional `e_v=`)
+
+If events still don't appear in Matomo reports:
+1. Check that the events are being sent (visible in debug logs)
+2. Verify the Matomo server receives the requests (check server access logs)
+3. Ensure you're looking in the correct Matomo report sections:
+   - **Behavior** → **Outlinks** for external link tracking
+   - **Behavior** → **Downloads** for file download tracking
+   - **Behavior** → **Events** for custom event tracking
 
 ### Behavior guarantees
 
