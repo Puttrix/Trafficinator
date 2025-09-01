@@ -110,6 +110,7 @@ Edit `docker-compose.yml` (development) or `docker-compose.prod.yml` (production
 environment:
   MATOMO_URL: "https://your-matomo-instance.com/matomo.php"
   MATOMO_SITE_ID: "1"
+  MATOMO_TOKEN_AUTH: "your_api_token_here"  # Required for country randomization
   TARGET_VISITS_PER_DAY: "20000"
   PAGEVIEWS_MIN: "3"
   PAGEVIEWS_MAX: "6"
@@ -233,7 +234,20 @@ The load generator includes **realistic visitor country distribution** using act
 
 **How it works**: The generator uses the Matomo `cip` parameter to override visitor IP addresses with realistic IPs from actual ISP and hosting provider ranges for each country.
 
-**Configuration**: Set `RANDOMIZE_VISITOR_COUNTRIES=false` to disable geolocation simulation and use your server's actual IP.
+**Configuration**: 
+- Set `RANDOMIZE_VISITOR_COUNTRIES=false` to disable geolocation simulation and use your server's actual IP
+- **Required for geolocation**: You must set `MATOMO_TOKEN_AUTH` with your Matomo API token when using country randomization
+
+**Setup for Country Randomization**:
+1. **Get your Matomo API token**: Go to Matomo → Personal → Security → Copy your API authentication token
+2. **Add to your environment**:
+   ```yaml
+   MATOMO_TOKEN_AUTH: "your_actual_api_token"
+   RANDOMIZE_VISITOR_COUNTRIES: "true"
+   ```
+3. **Restart the container** to apply changes
+
+**Note**: Without the API token, Matomo will reject requests with IP overriding for security reasons, and you'll see "requires valid token_auth" errors in Matomo logs.
 
 This creates realistic data for Matomo's **Visitors** → **Locations** reports, including country, region, and city breakdowns (depending on your GeoIP database accuracy).
 

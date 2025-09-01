@@ -6,6 +6,7 @@ services:
     environment:
       MATOMO_URL: "https://matomo.surputte.se/matomo.php"
       MATOMO_SITE_ID: "1"
+      MATOMO_TOKEN_AUTH: "your_api_token_here"  # Replace with your actual Matomo API token
       URLS_FILE: /config/urls.txt
       TARGET_VISITS_PER_DAY: "20000"
       PAGEVIEWS_MIN: "3"
