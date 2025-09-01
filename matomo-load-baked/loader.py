@@ -12,6 +12,7 @@ import ipaddress
 # ---- Configuration via environment variables ----
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
 SITE_ID = int(os.environ.get("MATOMO_SITE_ID", "1"))
+MATOMO_TOKEN_AUTH = os.environ.get("MATOMO_TOKEN_AUTH", "")
 URLS_FILE = os.environ.get("URLS_FILE", "/config/urls.txt")
 
 TARGET_VISITS_PER_DAY = float(os.environ.get("TARGET_VISITS_PER_DAY", "20000"))
@@ -452,6 +453,9 @@ async def visit(session, urls):
         # Add visitor IP for geolocation if enabled
         if visitor_ip:
             params['cip'] = visitor_ip
+            # Add token_auth when using cip parameter (required for IP overriding)
+            if MATOMO_TOKEN_AUTH:
+                params['token_auth'] = MATOMO_TOKEN_AUTH
 
         # If this is not the first pageview, include referrer as the previous page
         # so Matomo can attribute outlinks/downloads correctly.

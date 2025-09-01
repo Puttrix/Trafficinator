@@ -46,23 +46,63 @@ docker-compose build --no-cache
 
 All configuration is done via environment variables in `docker-compose.yml`:
 
+### Core Settings
 - `MATOMO_URL` - Target Matomo installation endpoint
 - `MATOMO_SITE_ID` - Site ID in Matomo to track
+- `MATOMO_TOKEN_AUTH` - Matomo API token (required for IP overriding when using country randomization)
+
+### Traffic Generation
 - `TARGET_VISITS_PER_DAY` - Desired daily visit rate
 - `PAGEVIEWS_MIN/MAX` - Range of pageviews per visit
 - `CONCURRENCY` - Number of concurrent connections
 - `PAUSE_BETWEEN_PVS_MIN/MAX` - Timing between pageviews
+
+### Auto-stop Controls
 - `AUTO_STOP_AFTER_HOURS` - Auto-stop timer (0 = disabled)
 - `MAX_TOTAL_VISITS` - Visit limit before stopping (0 = disabled)
 
+### Feature Probabilities
+- `SITESEARCH_PROBABILITY` - Probability (0-1) that a visit includes site search
+- `OUTLINKS_PROBABILITY` - Probability (0-1) that a visit includes outlinks
+- `DOWNLOADS_PROBABILITY` - Probability (0-1) that a visit includes downloads
+- `CLICK_EVENTS_PROBABILITY` - Probability (0-1) that a visit includes click events
+- `RANDOM_EVENTS_PROBABILITY` - Probability (0-1) that a visit includes random events
+
+### Traffic Sources
+- `DIRECT_TRAFFIC_PROBABILITY` - Probability (0-1) for direct traffic vs referrer traffic
+
+### Geolocation
+- `RANDOMIZE_VISITOR_COUNTRIES` - Enable realistic country distribution (true/false)
+  - **Note**: When enabled, requires `MATOMO_TOKEN_AUTH` to be set for IP overriding to work
+
 ## Key Patterns
 
-- Uses realistic user agents rotation
-- Implements proper visit tracking with visitor IDs
-- Graceful shutdown handling with signal handlers
-- Rate limiting with token-bucket algorithm
-- Auto-stop functionality for controlled test runs
-- Health checks for container monitoring
+- **Realistic traffic simulation**: User agents rotation, referrer sources, country distribution
+- **Visit tracking**: Proper visitor IDs and session management
+- **Geolocation support**: Randomized country distribution with IP override capability
+- **Advanced features**: Site search, outlinks, downloads, custom events
+- **Rate limiting**: Token-bucket algorithm for smooth traffic distribution
+- **Graceful shutdown**: Signal handlers for clean container stops
+- **Auto-stop functionality**: Time-based and visit-count limits for controlled test runs
+
+## Geolocation Setup
+
+When using `RANDOMIZE_VISITOR_COUNTRIES: "true"`, you need to:
+
+1. **Get your Matomo API token:**
+   - Go to Matomo → Personal → Security
+   - Copy your API authentication token
+
+2. **Add the token to your environment:**
+   ```yaml
+   environment:
+     MATOMO_TOKEN_AUTH: "your_api_token_here"
+     RANDOMIZE_VISITOR_COUNTRIES: "true"
+   ```
+
+3. **Restart the container** to apply changes
+
+Without the token, requests with IP overriding will be rejected by Matomo for security reasons.
 
 ## Dependencies
 

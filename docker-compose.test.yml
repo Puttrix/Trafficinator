@@ -1,0 +1,24 @@
+services:
+  matomo_loadgen:
+    image: ghcr.io/puttrix/trafficinator:latest
+    container_name: matomo-loadgen-test
+    environment:
+      MATOMO_URL: "https://matomo.surputte.se/matomo.php"
+      MATOMO_SITE_ID: "1"
+      URLS_FILE: /config/urls.txt
+      TARGET_VISITS_PER_DAY: "1000"
+      PAGEVIEWS_MIN: "1"
+      PAGEVIEWS_MAX: "2"
+      CONCURRENCY: "5"
+      PAUSE_BETWEEN_PVS_MIN: "0.1"
+      PAUSE_BETWEEN_PVS_MAX: "0.2"
+      AUTO_STOP_AFTER_HOURS: "0"
+      MAX_TOTAL_VISITS: "10"  # Stop after 10 visits for testing
+      SITESEARCH_PROBABILITY: "0.0"
+      OUTLINKS_PROBABILITY: "0.0"
+      DOWNLOADS_PROBABILITY: "0.0"
+      CLICK_EVENTS_PROBABILITY: "0.0"
+      RANDOM_EVENTS_PROBABILITY: "0.0"
+      DIRECT_TRAFFIC_PROBABILITY: "1.0"  # All direct traffic for simplicity
+      RANDOMIZE_VISITOR_COUNTRIES: "true"
+      LOG_LEVEL: "DEBUG"  # Enable debug logging
