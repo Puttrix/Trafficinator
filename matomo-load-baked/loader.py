@@ -206,7 +206,6 @@ async def visit(session, urls):
         num_pvs, has_search, has_outlink, has_download, has_click_event, has_random_event
     )
     
-    logging.info(f"Visit with {num_pvs} pageviews - search:{search_pageview}, outlink:{outlink_pageview}, download:{download_pageview}, click_event:{click_event_pageview}, random_event:{random_event_pageview}")
 
     for i in range(num_pvs):
         url = random.choice(urls)
@@ -344,9 +343,8 @@ async def main():
 
     # Target rate in visits/sec
     visits_per_sec = TARGET_VISITS_PER_DAY / 86400.0
-    logging.info(f"Target visits per day: {TARGET_VISITS_PER_DAY}, visits per second: {visits_per_sec:.4f}")
     # Simple token-bucket scheduler to smooth traffic
-    tokens = float(CONCURRENCY)  # Start with full tokens
+    tokens = 0.0
     last = time.time()
 
     connector = aiohttp.TCPConnector(limit=CONCURRENCY, ssl=False)
@@ -363,7 +361,6 @@ async def main():
 
         async def producer():
             nonlocal tokens, last
-            logging.info("Producer started")
             while True:
                 # Check auto-stop by time
                 if AUTO_STOP_AFTER_HOURS > 0 and (time.time() - start_ts) >= AUTO_STOP_AFTER_HOURS * 3600:
@@ -396,14 +393,11 @@ async def main():
                     tokens -= 1
                     produced += 1
                 
-                if produced > 0:
-                    logging.debug(f"Produced {produced} visits, tokens remaining: {tokens:.2f}")
 
                 await asyncio.sleep(0.25)
 
         async def worker():
             nonlocal visits_total, visits_today
-            logging.info("Worker started")
             while True:
                 job = await q.get()
                 if job is None:

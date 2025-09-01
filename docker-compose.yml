@@ -6,30 +6,28 @@ services:
     restart: unless-stopped
     environment:
       MATOMO_URL: "https://matomo.surputte.se/matomo.php"
-      MATOMO_SITE_ID: "2"
+      MATOMO_SITE_ID: "1"
       URLS_FILE: /config/urls.txt
-      TARGET_VISITS_PER_DAY: "45000"      # Higher rate for testing (2 visits/second)
+      TARGET_VISITS_PER_DAY: "20000"
       PAGEVIEWS_MIN: "3"
       PAGEVIEWS_MAX: "6"
       CONCURRENCY: "50"
-      PAUSE_BETWEEN_PVS_MIN: "0.1"     # Faster pageviews for testing
-      PAUSE_BETWEEN_PVS_MAX: "0.3"     # Faster pageviews for testing
+      PAUSE_BETWEEN_PVS_MIN: "0.5"
+      PAUSE_BETWEEN_PVS_MAX: "2.0"
       # Auto-stop options (choose one or both)
       AUTO_STOP_AFTER_HOURS: "0"       # stop after N hours (0 = disabled) — default disabled
       MAX_TOTAL_VISITS: "0"            # total visits before exit (0 = disabled)
       # Site search options
-      SITESEARCH_PROBABILITY: "0.50"   # 50% for testing
+      SITESEARCH_PROBABILITY: "0.15"   # probability (0-1) that a visit includes site search
       # Visit duration options (in minutes)
-      VISIT_DURATION_MIN: "0.5"        # minimum visit duration in minutes
-      VISIT_DURATION_MAX: "2.0"        # maximum visit duration in minutes
+      VISIT_DURATION_MIN: "1.0"        # minimum visit duration in minutes
+      VISIT_DURATION_MAX: "8.0"        # maximum visit duration in minutes
       # Outlinks and downloads options
-      OUTLINKS_PROBABILITY: "0.30"     # 30% for testing
-      DOWNLOADS_PROBABILITY: "0.25"    # 25% for testing
+      OUTLINKS_PROBABILITY: "0.10"     # probability (0-1) that a visit includes outlinks
+      DOWNLOADS_PROBABILITY: "0.08"    # probability (0-1) that a visit includes downloads
       # Custom events options
-      CLICK_EVENTS_PROBABILITY: "0.40" # 40% for testing
-      RANDOM_EVENTS_PROBABILITY: "0.35" # 35% for testing
-      # Debug
-      LOG_LEVEL: "INFO"
+      CLICK_EVENTS_PROBABILITY: "0.25" # probability (0-1) that a visit includes click events
+      RANDOM_EVENTS_PROBABILITY: "0.12" # probability (0-1) that a visit includes random events
     volumes:
       - ./config:/config
 
