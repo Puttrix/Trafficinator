@@ -5,13 +5,13 @@ FROM python:3.11-alpine
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
-COPY requirements.txt /app/requirements.txt
+COPY matomo-load-baked/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY loader.py /app/loader.py
+COPY matomo-load-baked/loader.py /app/loader.py
 
 # Copy config files into the container
-COPY ../config /config
+COPY config /config
 
 # A basic healthcheck: process is alive and DNS can resolve the host in MATOMO_URL (optional best-effort)
 HEALTHCHECK --interval=1m --timeout=10s --start-period=20s --retries=3 \
