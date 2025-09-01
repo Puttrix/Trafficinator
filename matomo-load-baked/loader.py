@@ -7,6 +7,7 @@ import signal
 import aiohttp
 import logging
 import urllib.parse
+import ipaddress
 
 # ---- Configuration via environment variables ----
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
@@ -38,6 +39,12 @@ DOWNLOADS_PROBABILITY = float(os.environ.get("DOWNLOADS_PROBABILITY", "0.08"))  
 # Custom events configuration
 CLICK_EVENTS_PROBABILITY = float(os.environ.get("CLICK_EVENTS_PROBABILITY", "0.25"))  # 25% of visits will have click events
 RANDOM_EVENTS_PROBABILITY = float(os.environ.get("RANDOM_EVENTS_PROBABILITY", "0.12"))  # 12% of visits will have random events
+
+# Traffic source configuration
+DIRECT_TRAFFIC_PROBABILITY = float(os.environ.get("DIRECT_TRAFFIC_PROBABILITY", "0.30"))  # 30% direct traffic
+
+# Geolocation configuration
+RANDOMIZE_VISITOR_COUNTRIES = os.environ.get("RANDOMIZE_VISITOR_COUNTRIES", "true").lower() == "true"
 
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
@@ -121,6 +128,172 @@ RANDOM_EVENTS = [
     {'category': 'User', 'action': 'Logout', 'name': 'User Logout', 'value': None},
 ]
 
+# Traffic sources for realistic referrer simulation
+REFERRER_SOURCES = {
+    'search_engines': {
+        'probability': 0.35,  # 35% from search engines
+        'referrers': [
+            'https://www.google.com/search?q=matomo+analytics',
+            'https://www.google.com/search?q=web+analytics+tool',
+            'https://www.google.com/search?q=open+source+analytics',
+            'https://www.google.com/search?q=google+analytics+alternative',
+            'https://www.bing.com/search?q=privacy+analytics',
+            'https://duckduckgo.com/?q=matomo+tracking',
+            'https://search.yahoo.com/search?p=web+statistics',
+            'https://www.google.com/search?q=gdpr+compliant+analytics',
+            'https://www.bing.com/search?q=self+hosted+analytics',
+            'https://duckduckgo.com/?q=website+tracking+software'
+        ]
+    },
+    'social_media': {
+        'probability': 0.15,  # 15% from social media
+        'referrers': [
+            'https://twitter.com/',
+            'https://www.linkedin.com/',
+            'https://www.facebook.com/',
+            'https://www.reddit.com/',
+            'https://news.ycombinator.com/',
+            'https://medium.com/',
+            'https://dev.to/',
+            'https://stackoverflow.com/',
+            'https://github.com/',
+            'https://www.producthunt.com/'
+        ]
+    },
+    'referral_sites': {
+        'probability': 0.20,  # 20% from referral sites
+        'referrers': [
+            'https://alternativeto.net/',
+            'https://www.capterra.com/',
+            'https://www.g2.com/',
+            'https://sourceforge.net/',
+            'https://www.softwaresuggest.com/',
+            'https://blog.hubspot.com/',
+            'https://moz.com/',
+            'https://searchengineland.com/',
+            'https://techcrunch.com/',
+            'https://www.digitaltrends.com/',
+            'https://blog.kissmetrics.com/',
+            'https://www.semrush.com/',
+            'https://backlinko.com/',
+            'https://neilpatel.com/',
+            'https://marketingland.com/'
+        ]
+    }
+    # Note: Direct traffic (30%) is handled by not setting a referrer
+}
+
+# Country distribution for visitor geolocation (based on typical web analytics patterns)
+COUNTRY_IP_RANGES = {
+    'United States': {
+        'probability': 0.35,  # 35% US traffic
+        'ip_ranges': [
+            '173.252.0.0/16',    # Facebook range (for variety)
+            '74.125.0.0/16',     # Google range
+            '208.67.0.0/16',     # OpenDNS
+            '192.30.252.0/22',   # GitHub
+            '199.232.0.0/16',    # Akamai US
+            '23.0.0.0/8',        # Akamai/CDN
+            '104.16.0.0/12',     # Cloudflare US
+            '142.250.0.0/15',    # Google US
+        ]
+    },
+    'Germany': {
+        'probability': 0.10,  # 10% German traffic
+        'ip_ranges': [
+            '78.46.0.0/15',      # Hetzner Germany
+            '5.9.0.0/16',        # Hetzner
+            '136.243.0.0/16',    # Hetzner dedicated
+            '88.198.0.0/16',     # Hetzner
+            '46.4.0.0/16',       # Deutsche Telekom
+            '80.156.0.0/16',     # T-Mobile Germany
+        ]
+    },
+    'United Kingdom': {
+        'probability': 0.08,  # 8% UK traffic
+        'ip_ranges': [
+            '51.140.0.0/14',     # Microsoft Azure UK
+            '185.40.0.0/16',     # UK ISP
+            '86.0.0.0/12',       # Virgin Media UK
+            '109.144.0.0/14',    # BT UK
+            '2.96.0.0/11',       # Sky UK
+        ]
+    },
+    'Canada': {
+        'probability': 0.06,  # 6% Canadian traffic
+        'ip_ranges': [
+            '142.0.0.0/8',       # Canada general
+            '206.47.0.0/16',     # Shaw Canada
+            '24.0.0.0/13',       # Rogers Canada
+            '99.224.0.0/11',     # Bell Canada
+        ]
+    },
+    'France': {
+        'probability': 0.06,  # 6% French traffic
+        'ip_ranges': [
+            '163.172.0.0/16',    # Online.net France
+            '51.15.0.0/16',      # Scaleway France
+            '212.129.0.0/16',    # Orange France
+            '90.0.0.0/9',        # France Telecom
+        ]
+    },
+    'Australia': {
+        'probability': 0.05,  # 5% Australian traffic
+        'ip_ranges': [
+            '203.0.0.0/8',       # Australia/NZ general
+            '144.132.0.0/16',    # Telstra Australia
+            '101.160.0.0/11',    # Optus Australia
+            '180.150.0.0/15',    # TPG Australia
+        ]
+    },
+    'Netherlands': {
+        'probability': 0.05,  # 5% Dutch traffic
+        'ip_ranges': [
+            '185.3.0.0/16',      # Netherlands hosting
+            '146.185.0.0/16',    # TransIP Netherlands
+            '31.220.0.0/16',     # Netherlands ISP
+            '213.154.0.0/16',    # KPN Netherlands
+        ]
+    },
+    'Japan': {
+        'probability': 0.04,  # 4% Japanese traffic
+        'ip_ranges': [
+            '103.4.0.0/14',      # Japan hosting
+            '210.0.0.0/7',       # Japan general
+            '133.0.0.0/8',       # Japanese universities/research
+        ]
+    },
+    'Sweden': {
+        'probability': 0.03,  # 3% Swedish traffic  
+        'ip_ranges': [
+            '194.47.0.0/16',     # Telia Sweden
+            '81.230.0.0/16',     # Bredband2 Sweden
+            '78.72.0.0/15',      # Comhem Sweden
+        ]
+    },
+    'Brazil': {
+        'probability': 0.03,  # 3% Brazilian traffic
+        'ip_ranges': [
+            '200.0.0.0/7',       # Brazil general
+            '177.0.0.0/8',       # Brazil ISPs
+            '191.0.0.0/8',       # Brazil telecom
+        ]
+    },
+    'Other Countries': {
+        'probability': 0.15,  # 15% distributed among other countries
+        'ip_ranges': [
+            '85.0.0.0/8',        # Various European
+            '195.0.0.0/8',       # European general
+            '62.0.0.0/8',        # European ISPs
+            '91.0.0.0/8',        # Eastern European
+            '41.0.0.0/8',        # African
+            '1.0.0.0/8',         # Asian Pacific
+            '27.0.0.0/8',        # Asian
+            '36.0.0.0/8',        # Various Asian
+        ]
+    }
+}
+
 def read_urls(path):
     urls = []
     with open(path, 'r', encoding='utf-8') as f:
@@ -132,6 +305,60 @@ def read_urls(path):
     if not urls:
         raise RuntimeError("No URLs found in URLS_FILE")
     return urls
+
+def choose_referrer():
+    """Choose a referrer based on realistic traffic source probabilities.
+    
+    Returns:
+        str or None: Referrer URL, or None for direct traffic
+    """
+    rand = random.random()
+    
+    # Direct traffic (no referrer)
+    if rand < DIRECT_TRAFFIC_PROBABILITY:
+        return None
+    
+    # Remaining probability distributed among referrer sources
+    remaining_prob = 1.0 - DIRECT_TRAFFIC_PROBABILITY
+    current_prob = DIRECT_TRAFFIC_PROBABILITY
+    
+    for source_type, config in REFERRER_SOURCES.items():
+        source_prob = config['probability']
+        if rand < current_prob + source_prob:
+            return random.choice(config['referrers'])
+        current_prob += source_prob
+    
+    # Fallback to direct traffic if probabilities don't add up to 1.0
+    return None
+
+def choose_country_and_ip():
+    """Choose a country based on realistic distribution and generate an IP from that country.
+    
+    Returns:
+        tuple: (country_name, ip_address) or (None, None) if disabled
+    """
+    if not RANDOMIZE_VISITOR_COUNTRIES:
+        return None, None
+    
+    rand = random.random()
+    current_prob = 0.0
+    
+    for country, config in COUNTRY_IP_RANGES.items():
+        current_prob += config['probability']
+        if rand < current_prob:
+            # Choose random IP range from this country
+            ip_range = random.choice(config['ip_ranges'])
+            # Generate random IP within the chosen range
+            network = ipaddress.ip_network(ip_range)
+            # Get a random IP from the network (avoiding network and broadcast addresses)
+            random_ip = network.network_address + random.randint(1, network.num_addresses - 2)
+            return country, str(random_ip)
+    
+    # Fallback to US if probabilities don't add up
+    us_range = random.choice(COUNTRY_IP_RANGES['United States']['ip_ranges'])
+    network = ipaddress.ip_network(us_range)
+    random_ip = network.network_address + random.randint(1, network.num_addresses - 2)
+    return 'United States', str(random_ip)
 
 def rand_hex(n=16):
     import random
@@ -191,7 +418,8 @@ async def visit(session, urls):
     num_pvs = random.randint(PAGEVIEWS_MIN, PAGEVIEWS_MAX)
     vid = rand_hex(16)  # visitor id
     ua = random.choice(USER_AGENTS)
-    ref = random.choice(urls)
+    ref = choose_referrer()  # Choose realistic referrer or None for direct traffic
+    country, visitor_ip = choose_country_and_ip()  # Choose country and generate IP
     
     # Determine if this visit will include site search, outlinks, downloads, or custom events
     has_search = random.random() < SITESEARCH_PROBABILITY
@@ -220,12 +448,18 @@ async def visit(session, urls):
             '_id': vid,
             'rand': random.randint(0, 2**31-1),
         }
+        
+        # Add visitor IP for geolocation if enabled
+        if visitor_ip:
+            params['cip'] = visitor_ip
 
         # If this is not the first pageview, include referrer as the previous page
         # so Matomo can attribute outlinks/downloads correctly.
         if i == 0:
             params['new_visit'] = 1
-            params['urlref'] = ref
+            # Only set referrer if it's not None (direct traffic has no referrer)
+            if ref is not None:
+                params['urlref'] = ref
         else:
             params['urlref'] = last_page_url
 

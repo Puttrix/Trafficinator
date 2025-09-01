@@ -15,7 +15,9 @@ It helps you **stress test Matomo’s frontend performance** when handling large
   - **Site search simulation** with configurable probability and realistic search terms  
   - **Outlinks and downloads tracking** with external URLs and file downloads  
   - **Custom events tracking** with click events and random user interactions  
-  - **Extended visit durations** of 1-8 minutes for realistic engagement metrics  
+  - **Extended visit durations** of 1-8 minutes for realistic engagement metrics
+  - **Traffic source diversification** with search engines, social media, referrals, and direct traffic
+  - **Global visitor simulation** with realistic country distribution using authentic IP ranges  
 
 - **High-volume traffic**  
   - Configurable to produce **20,000+ visits/day**  
@@ -123,6 +125,8 @@ environment:
   DOWNLOADS_PROBABILITY: "0.08"   # Probability (0-1) that a visit includes downloads
   CLICK_EVENTS_PROBABILITY: "0.25" # Probability (0-1) that a visit includes click events
   RANDOM_EVENTS_PROBABILITY: "0.12" # Probability (0-1) that a visit includes random events
+  DIRECT_TRAFFIC_PROBABILITY: "0.30" # Probability (0-1) for direct traffic (30% direct, 70% with referrers)
+  RANDOMIZE_VISITOR_COUNTRIES: "true" # Enable realistic country distribution (true/false)
 ```
 
 ### URL Structure  
@@ -191,6 +195,47 @@ The load generator includes **realistic custom events tracking** to simulate use
 - **Matomo compliance**: Uses proper event tracking parameters (`e_c`, `e_a`, `e_n`, `e_v`)
 
 This generates comprehensive data for Matomo's **Behavior** → **Events** reports, providing insights into user interactions, engagement patterns, and feature usage beyond basic pageviews.
+
+### Traffic Sources Simulation
+The load generator includes **realistic traffic source distribution** to create diverse referrer data:
+
+- **Search Engines (35%)**: Google, Bing, DuckDuckGo, Yahoo with realistic search queries like:
+  - "matomo analytics", "web analytics tool", "google analytics alternative"
+  - "privacy analytics", "gdpr compliant analytics", "open source analytics"
+
+- **Social Media (15%)**: Twitter, LinkedIn, Facebook, Reddit, Hacker News, Medium, GitHub, Stack Overflow
+
+- **Referral Sites (20%)**: Industry sites like:
+  - **Software directories**: AlternativeTo, Capterra, G2, SourceForge
+  - **Marketing blogs**: HubSpot, Moz, Kissmetrics, Neil Patel, Backlinko
+  - **Tech news**: TechCrunch, SearchEngineLand, MarketingLand
+
+- **Direct Traffic (30%)**: Users arriving without referrers (bookmarks, direct URLs, email links)
+
+**Configuration**: Adjust `DIRECT_TRAFFIC_PROBABILITY` (0.0-1.0) to control the direct traffic percentage. The remaining traffic is distributed among the referrer sources.
+
+This generates realistic data for Matomo's **Acquisition** → **All Channels** and **Referrers** reports, helping you test and analyze traffic source performance.
+
+### Visitor Geolocation Simulation
+The load generator includes **realistic visitor country distribution** using actual IP address ranges:
+
+- **United States (35%)**: Google, Facebook, GitHub, Cloudflare, Akamai IP ranges
+- **Germany (10%)**: Hetzner, Deutsche Telekom, T-Mobile IP ranges  
+- **United Kingdom (8%)**: Microsoft Azure UK, Virgin Media, BT, Sky IP ranges
+- **Canada (6%)**: Shaw, Rogers, Bell Canada IP ranges
+- **France (6%)**: Online.net, Scaleway, Orange, France Telecom IP ranges
+- **Australia (5%)**: Telstra, Optus, TPG Australia IP ranges
+- **Netherlands (5%)**: TransIP, KPN Netherlands IP ranges
+- **Japan (4%)**: Japanese hosting and university IP ranges
+- **Sweden (3%)**: Telia, Bredband2, Comhem IP ranges
+- **Brazil (3%)**: Brazilian ISP and telecom IP ranges
+- **Other Countries (15%)**: Distributed across European, Asian, and African IP ranges
+
+**How it works**: The generator uses the Matomo `cip` parameter to override visitor IP addresses with realistic IPs from actual ISP and hosting provider ranges for each country.
+
+**Configuration**: Set `RANDOMIZE_VISITOR_COUNTRIES=false` to disable geolocation simulation and use your server's actual IP.
+
+This creates realistic data for Matomo's **Visitors** → **Locations** reports, including country, region, and city breakdowns (depending on your GeoIP database accuracy).
 
 ### Debugging outlinks, downloads & custom events
 
@@ -327,13 +372,14 @@ Choose one of these options:
    - Check Matomo reports for performance bottlenecks
    - Identify slow-loading reports (Pages, Visitors, Behavior Flow, Site Search, Outlinks, Downloads, Events)
    - Note database query performance and frontend rendering times
-   - Review comprehensive analytics: site search, outlinks, downloads, custom events, session duration, engagement metrics
+   - Review comprehensive analytics: site search, outlinks, downloads, custom events, session duration, engagement metrics, traffic sources, and geolocation data
 
 5. **Optimize Matomo settings**  
    - Tune archiving processes
    - Optimize database indexing  
    - Adjust caching configuration
    - Configure report segmentation limits
+   - Optimize GeoIP lookups for location reports
 
 6. **Validate improvements**  
    ```bash

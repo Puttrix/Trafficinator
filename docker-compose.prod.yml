@@ -27,6 +27,10 @@ services:
       # Custom events options
       CLICK_EVENTS_PROBABILITY: "0.25" # probability (0-1) that a visit includes click events
       RANDOM_EVENTS_PROBABILITY: "0.12" # probability (0-1) that a visit includes random events
+      # Traffic sources options
+      DIRECT_TRAFFIC_PROBABILITY: "0.30" # probability (0-1) for direct traffic (30% direct, 70% with referrers)
+      # Geolocation options
+      RANDOMIZE_VISITOR_COUNTRIES: "true" # enable realistic country distribution (true/false)
     # Config files are now embedded in the Docker image
     # volumes:
     #   - ./config:/config
