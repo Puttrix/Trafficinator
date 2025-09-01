@@ -1,8 +1,6 @@
 services:
   matomo_loadgen:
-    build:
-      context: ./matomo-load-baked
-    image: ghcr.io/puttrix/trafficinator:dev
+    image: ghcr.io/puttrix/trafficinator:latest
     container_name: matomo-loadgen
     restart: unless-stopped
     environment:
@@ -31,4 +29,21 @@ services:
       RANDOM_EVENTS_PROBABILITY: "0.12" # probability (0-1) that a visit includes random events
     volumes:
       - ./config:/config
+    # If you front with Nginx Proxy Manager or a Cloudflare Tunnel container,
+    # attach to that external network instead of publishing ports:
+    # networks:
+    #   - proxy
 
+  # Scoped Watchtower: only monitors the "matomo-loadgen" container
+  watchtower_trafficinator:
+    image: containrrr/watchtower
+    container_name: watchtower_trafficinator
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --interval 30 matomo-loadgen
+    # ↑ last arg = container name to watch
+
+# networks:
+#   proxy:
+#     external: true

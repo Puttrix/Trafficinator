@@ -47,15 +47,30 @@ cd Trafficinator
 
 The project is fully containerized - no local Python installation needed!
 
+### Remote Deployment (Production)
+
+For production deployments with automatic updates:
+
+1. **Set up GitHub Container Registry**: The included GitHub Actions workflow automatically builds and pushes images to GHCR
+2. **Deploy with auto-updates**:
+   ```bash
+   # Upload docker-compose.prod.yml and config/ to your remote machine
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+3. **Auto-updates**: Watchtower monitors for new images every 30 seconds and automatically updates
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete remote deployment instructions.
+
 ---
 
 ## ⚡ Usage  
 
 ### Docker Compose (Recommended)  
-The project includes a pre-configured Docker Compose setup:
+The project includes pre-configured Docker Compose setups:
 
+#### Development/Local Testing
 ```bash
-# Start load generation with default settings
+# Start load generation with default settings (builds locally)
 docker-compose up --build
 
 # View logs in real-time
@@ -63,6 +78,18 @@ docker-compose logs -f matomo_loadgen
 
 # Stop the load generator
 docker-compose down
+```
+
+#### Production/Remote Deployment
+```bash
+# Deploy with auto-updates using GHCR image
+docker-compose -f docker-compose.prod.yml up -d
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f matomo_loadgen
+
+# Stop
+docker-compose -f docker-compose.prod.yml down
 ```
 
 ### Configuration  
