@@ -659,9 +659,9 @@ async def visit(session, urls):
         # Add visitor IP for geolocation if enabled
         if visitor_ip:
             params['cip'] = visitor_ip
-            # Add token_auth when using cip parameter (required for IP overriding)
-            if MATOMO_TOKEN_AUTH:
-                params['token_auth'] = MATOMO_TOKEN_AUTH
+        # Include token_auth whenever provided so Matomo accepts overridden cdt/cip
+        if MATOMO_TOKEN_AUTH:
+            params['token_auth'] = MATOMO_TOKEN_AUTH
 
         # If this is not the first pageview, include referrer as the previous page
         # so Matomo can attribute outlinks/downloads correctly.
@@ -800,8 +800,8 @@ async def visit(session, urls):
         }
         if visitor_ip:
             ping_params['cip'] = visitor_ip
-            if MATOMO_TOKEN_AUTH:
-                ping_params['token_auth'] = MATOMO_TOKEN_AUTH
+        if MATOMO_TOKEN_AUTH:
+            ping_params['token_auth'] = MATOMO_TOKEN_AUTH
 
         headers = {'User-Agent': ua}
         logging.debug('Sending ping to extend last page time: visitor=%s pv_id=%s', vid, last_pv_id)
