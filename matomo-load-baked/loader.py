@@ -8,7 +8,7 @@ import aiohttp
 import logging
 import urllib.parse
 import ipaddress
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # ---- Configuration via environment variables ----
@@ -598,22 +598,50 @@ async def visit(session, urls):
         # Place ecommerce order on the last pageview (checkout completion)
         ecommerce_pageview = num_pvs
 
+    # --- Build a simulated timeline for this visit ---
+    # Total desired visit duration in seconds (includes time after last pageview)
+    visit_duration_seconds = random.uniform(VISIT_DURATION_MIN * 60, VISIT_DURATION_MAX * 60)
+
+    # Split visit duration across each pageview as dwell time segments.
+    # There are num_pvs segments: one before each subsequent PV, and one final segment after the last PV.
+    # Use random weights to create natural variation across pages.
+    weights = [random.uniform(0.5, 1.5) for _ in range(num_pvs)]
+    total_weight = sum(weights)
+    dwell_times = [(visit_duration_seconds * w / total_weight) for w in weights]
+
+    # Establish a timezone-aware base time so the last dwell ends at "now" in the chosen timezone.
+    if TIMEZONE != "UTC":
+        try:
+            tz = pytz.timezone(TIMEZONE)
+            now_dt = datetime.now(tz)
+        except pytz.UnknownTimeZoneError:
+            logging.warning(f"Unknown timezone '{TIMEZONE}', falling back to UTC")
+            tz = pytz.UTC
+            now_dt = datetime.utcnow().replace(tzinfo=tz)
+    else:
+        tz = pytz.UTC
+        now_dt = datetime.utcnow().replace(tzinfo=tz)
+
+    # The first pageview occurs at start_dt; last dwell ends at now_dt
+    start_dt = now_dt - timedelta(seconds=visit_duration_seconds)
+
+    # Precompute the pageview timestamps and pageview IDs
+    pv_times = []
+    acc = timedelta(0)
+    for idx in range(num_pvs):
+        pv_times.append(start_dt + acc)
+        if idx < num_pvs - 1:
+            acc += timedelta(seconds=dwell_times[idx])
+
+    pv_ids = [rand_hex(6) for _ in range(num_pvs)]
+
     for i in range(num_pvs):
         url = random.choice(urls)
         # Keep the original page URL (the page that contains any outlink/download)
         page_url = url
 
-        # Create timezone-aware timestamp if timezone is set
-        if TIMEZONE != "UTC":
-            try:
-                tz = pytz.timezone(TIMEZONE)
-                current_time = datetime.now(tz)
-                timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
-            except pytz.UnknownTimeZoneError:
-                logging.warning(f"Unknown timezone '{TIMEZONE}', falling back to UTC")
-                timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        # Use the simulated timeline timestamp for this pageview
+        timestamp = pv_times[i].strftime('%Y-%m-%d %H:%M:%S')
 
         params = {
             'idsite': SITE_ID,
@@ -624,6 +652,9 @@ async def visit(session, urls):
             'rand': random.randint(0, 2**31-1),
             'cdt': timestamp,
         }
+
+        # Include a stable pageview id so we can later send a ping to extend the last page's time
+        params['pv_id'] = pv_ids[i]
         
         # Add visitor IP for geolocation if enabled
         if visitor_ip:
@@ -749,16 +780,35 @@ async def visit(session, urls):
             last_page_url = page_url
             
         if i < num_pvs - 1:
+            # Keep a short real delay to smooth outbound requests (cdt handles the simulated timing)
             await asyncio.sleep(random.uniform(PAUSE_BETWEEN_PVS_MIN, PAUSE_BETWEEN_PVS_MAX))
     
-    # Add extended visit duration - simulate user staying on site after last pageview
-    visit_duration_seconds = random.uniform(VISIT_DURATION_MIN * 60, VISIT_DURATION_MAX * 60)
-    # Subtract time already spent on pageviews
-    time_spent_on_pageviews = (num_pvs - 1) * ((PAUSE_BETWEEN_PVS_MIN + PAUSE_BETWEEN_PVS_MAX) / 2)
-    remaining_time = max(0, visit_duration_seconds - time_spent_on_pageviews)
-    
-    if remaining_time > 0:
-        await asyncio.sleep(remaining_time)
+    # Extend the last page's time-on-page using a ping hit
+    try:
+        last_pv_time = pv_times[-1]
+        last_pv_id = pv_ids[-1]
+        last_page_timestamp = (last_pv_time + timedelta(seconds=dwell_times[-1])).strftime('%Y-%m-%d %H:%M:%S')
+
+        ping_params = {
+            'idsite': SITE_ID,
+            'rec': 1,
+            'url': last_page_url,
+            '_id': vid,
+            'cdt': last_page_timestamp,
+            'ping': 1,
+            'pv_id': last_pv_id,
+        }
+        if visitor_ip:
+            ping_params['cip'] = visitor_ip
+            if MATOMO_TOKEN_AUTH:
+                ping_params['token_auth'] = MATOMO_TOKEN_AUTH
+
+        headers = {'User-Agent': ua}
+        logging.debug('Sending ping to extend last page time: visitor=%s pv_id=%s', vid, last_pv_id)
+        await send_hit(session, ping_params, headers)
+    except Exception:
+        # Best-effort; if ping fails, the last page time may appear shorter (0s)
+        pass
 
 class GracefulExit(SystemExit):
     pass
