@@ -469,6 +469,10 @@ Choose one of these options:
 Pull requests and issue reports are welcome!  
 If you’d like to add new traffic patterns, extend report dimensions, or improve scaling, feel free to contribute.  
 
+## 🧭 Roadmap / Backlog
+
+See `BACKLOG.md` for upcoming ideas and planned features, including a control UI/API, presets (Light/Medium/Heavy), test-connection validation, and status/logs surfacing.
+
 ---
 
 ## 📜 License  

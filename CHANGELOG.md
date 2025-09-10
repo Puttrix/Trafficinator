@@ -9,3 +9,4 @@
 - Add `choose_action_pages` helper and unit tests.
 - Implement per-24-hour `MAX_TOTAL_VISITS` window (generator pauses after daily cap and resumes when 24h window resets).
 - Default docker-compose configuration changed to run indefinitely by default (`AUTO_STOP_AFTER_HOURS=0`, `restart: unless-stopped`).
+- Remove experimental `control_ui` scaffold and compose stub (Web UI postponed).
