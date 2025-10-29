@@ -9,6 +9,14 @@ It helps you **stress test Matomo’s frontend performance** when handling large
 
 ## 🚀 Features  
 
+- **🎨 Modern Web Control UI**
+  - **Visual dashboard** with real-time status monitoring
+  - **Configuration form** with validation and test connection
+  - **Load presets** (Light/Medium/Heavy/Extreme) for quick setup
+  - **Live log viewer** with filtering and search
+  - **Secure API** with authentication and rate limiting
+  - **REST API** for programmatic control and automation
+
 - **Realistic traffic simulation**  
   - Generates **3–6 pageviews per visit** with natural timing between requests  
   - Rotates **user agents** and **URLs** to create diverse report data  
@@ -50,6 +58,14 @@ cd Trafficinator
 
 The project is fully containerized - no local Python installation needed!
 
+### Security Note
+
+**For production deployments:**
+- Always change the default API key (`change-me-in-production`)
+- Use HTTPS via reverse proxy (nginx, Caddy, Traefik)
+- Configure CORS for specific origins
+- See [SECURITY.md](SECURITY.md) for complete security guidelines
+
 ### Remote Deployment (Production)
 
 For production deployments with automatic updates:
@@ -77,8 +93,38 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for complete remote deployment instructions.
 
 ## ⚡ Usage  
 
-### Docker Compose (Recommended)  
-The project includes pre-configured Docker Compose setups:
+### 🎨 Web Control UI (Recommended)
+
+Trafficinator includes a **modern web interface** for easy configuration and monitoring:
+
+```bash
+# Start the Web UI and load generator
+docker-compose -f docker-compose.webui.yml up -d
+
+# Access the UI
+open http://localhost:8000/ui
+```
+
+**Features:**
+- 📊 **Real-time Status Dashboard** - Monitor container state, uptime, and metrics
+- ⚙️ **Configuration Form** - GUI-based config with validation and test connection
+- 🎯 **Load Presets** - One-click Light/Medium/Heavy/Extreme scenarios
+- 📋 **Live Log Viewer** - Real-time logs with filtering and search
+- 🔒 **Secure API** - API key authentication and rate limiting
+- 📱 **Responsive Design** - Works on desktop, tablet, and mobile
+
+**First-time Setup:**
+1. Navigate to http://localhost:8000/ui
+2. Enter API key when prompted: `change-me-in-production`
+3. Configure your Matomo target and start generating traffic
+
+**See the complete guide:** [WEB_UI_GUIDE.md](WEB_UI_GUIDE.md)
+
+---
+
+### 📟 Docker Compose (Command Line)
+
+For advanced users or automation, use Docker Compose directly:
 
 #### Development/Local Testing
 ```bash
@@ -469,9 +515,50 @@ Choose one of these options:
 Pull requests and issue reports are welcome!  
 If you’d like to add new traffic patterns, extend report dimensions, or improve scaling, feel free to contribute.  
 
+## 📚 Documentation
+
+- **[WEB_UI_GUIDE.md](WEB_UI_GUIDE.md)** - Complete Web UI user guide with API reference
+- **[SECURITY.md](SECURITY.md)** - Security best practices for production deployment
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Remote deployment and auto-update instructions
+- **[BACKLOG.md](BACKLOG.md)** - Development roadmap and planned features
+
+## 🔌 REST API
+
+The Web UI exposes a REST API for programmatic control:
+
+```bash
+# Get container status
+curl -H "X-API-Key: your-key" http://localhost:8000/api/status
+
+# Start load generation
+curl -X POST -H "X-API-Key: your-key" http://localhost:8000/api/start
+
+# Stop load generation
+curl -X POST -H "X-API-Key: your-key" http://localhost:8000/api/stop
+
+# Get logs
+curl -H "X-API-Key: your-key" "http://localhost:8000/api/logs?lines=100"
+
+# Validate configuration
+curl -X POST -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"matomo_url":"https://analytics.example.com/matomo.php","matomo_site_id":1}' \
+  http://localhost:8000/api/validate
+```
+
+**Interactive API Documentation:** http://localhost:8000/docs
+
+**Rate Limits:** 10-60 requests/minute per endpoint (configurable)
+
+See [WEB_UI_GUIDE.md](WEB_UI_GUIDE.md#api-reference) for complete API documentation.
+
 ## 🧭 Roadmap / Backlog
 
-See `BACKLOG.md` for upcoming ideas and planned features, including a control UI/API, presets (Light/Medium/Heavy), test-connection validation, and status/logs surfacing.
+See [BACKLOG.md](BACKLOG.md) for upcoming ideas and planned features. Recent additions include:
+- ✅ **Web Control UI** - Complete with status dashboard, config form, presets, and logs
+- ✅ **REST API** - Full programmatic control with authentication
+- ✅ **Load Presets** - Light/Medium/Heavy/Extreme scenarios
+- 🔄 **Configuration Persistence** - SQLite database for saved configs (planned)
 
 ---
 

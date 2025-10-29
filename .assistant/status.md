@@ -1,22 +1,22 @@
 # Status
 
-**Last Updated:** 2025-10-29 (Decision to build Web UI)
+**Last Updated:** 2025-01-29 (Phase 2 Frontend Implementation Complete)
 
 ---
 
 ## Focus
-🚀 **Web UI Development** - Building FastAPI control service and web interface for easier configuration and monitoring.
+� **Web UI Phase 2: Complete** - All frontend features implemented: configuration forms, status dashboard, load presets, and log viewer.
 
-**Current Priority:** Phase 1 - Backend Foundation (P-015, P-016, P-017)
+**Current Priority:** Phase 3 - Polish & Documentation (P-025, P-026)
 
 ---
 
 ## Now / Next / Later
 See [plan.md](plan.md) for detailed roadmap.
 
-**Now:** Backend foundation (P-015, P-016, P-017), validation utilities (P-004), presets (P-005)  
-**Next:** Backend completion (P-018, P-019), frontend core (P-020, P-021, P-023, P-024), integration (P-022, P-025)  
-**Later:** UI enhancements (P-026), documentation updates, advanced generator features
+**Now:** Phase 3 polish - P-025 (testing, documentation, deployment guide)
+**Next:** Phase 4 nice-to-haves - P-026 (advanced features, WebSocket streaming, metrics graphs)  
+**Later:** Multi-target support, advanced orchestration, community features
 
 ---
 
@@ -50,7 +50,21 @@ See [plan.md](plan.md) for detailed roadmap.
 - `matomo-load-baked/loader.py` (929 lines) — Main load generator
 - `docker-compose.yml` — Development/local configuration
 - `docker-compose.prod.yml` — Production deployment with Watchtower
+- `docker-compose.webui.yml` — Two-service deployment (generator + control UI)
 - `config/urls.txt` — 2,000 pre-built URLs (embedded in image)
+
+### Control UI (NEW)
+- `control-ui/app.py` (413 lines) — FastAPI application with REST API
+- `control-ui/static/index.html` (132 lines) — Responsive web interface
+- `control-ui/static/js/api.js` (134 lines) — API client with authentication
+- `control-ui/static/js/ui.js` (180 lines) — UI helper functions
+- `control-ui/static/js/app.js` (101 lines) — Application controller
+- `control-ui/docker_client.py` — Docker SDK wrapper
+- `control-ui/container_manager.py` — Container control logic
+- `control-ui/config_validator.py` — Pydantic validation & Matomo connectivity
+- `control-ui/auth.py` — API key authentication
+- `control-ui/models.py` — Request/response models
+
 
 ### Documentation
 - `README.md` — Primary user documentation
@@ -71,6 +85,47 @@ See [plan.md](plan.md) for detailed roadmap.
 ---
 
 ## Changelog
+
+### 2025-01-29 — P-020 Complete: Frontend Foundation
+- **Phase 2 Started:** Frontend implementation underway
+- Created responsive web UI with Tailwind CSS (CDN-based)
+- Built 4-tab navigation: Status, Config, Presets, Logs
+- Implemented comprehensive UI helpers (loading, alerts, formatting)
+- Created API client with authentication and error handling
+- Added application controller with auto-refresh and lifecycle management
+- Integrated static file serving in FastAPI
+- Web UI accessible at http://localhost:8000/ui
+- **Deliverables:** 4 new files (~550 lines frontend code), app.py updates
+- **Next:** P-021 (configuration form) or P-023 (status dashboard) - can parallelize
+
+### 2025-10-29 — P-019 Complete: Authentication & Security
+- API key authentication via X-API-Key header
+- Rate limiting with slowapi (10-60 req/min per endpoint)
+- CORS middleware with configurable origins
+- Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS)
+- Constant-time API key comparison (timing attack prevention)
+- Fixed Docker SDK compatibility (urllib3<2, requests<2.29.0, docker 6.1.3)
+
+### 2025-10-29 — P-017 Complete: Config Validation
+- Comprehensive Pydantic validation for 25+ configuration fields
+- Business rule validation (min <= max, percentages sum to 100%)
+- Async Matomo connectivity testing
+- Warning system for high-value configurations
+- Validation endpoint with detailed error messages
+
+### 2025-10-29 — P-016 Complete: Core REST API
+- 7 API endpoints implemented (status, start, stop, restart, logs, validate, test-connection)
+- Request/response models with Pydantic
+- Container manager layer with proper error handling
+- Docker SDK integration with unix socket support
+- Rate limiting applied to all endpoints
+
+### 2025-10-29 — P-015 Complete: FastAPI Service Setup
+- FastAPI application scaffolded
+- Docker integration with compose file
+- Requirements and environment configuration
+- Test scripts and documentation
+- Health check and root endpoints
 
 ### 2025-10-29 — DECISION: Build Full Web UI (Reversal of ADR-007)
 - **Major decision:** Proceeding with Full Web UI (Option 1 from P-007 feasibility study)
