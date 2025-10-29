@@ -23,6 +23,10 @@ class App {
         this.statusDashboard = new StatusDashboard();
         this.statusDashboard.init();
 
+        // Initialize load presets
+        this.loadPresets = new LoadPresets();
+        this.loadPresets.init();
+
         // Set up event listeners
         this.setupEventListeners();
 

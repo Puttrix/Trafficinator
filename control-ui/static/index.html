@@ -516,9 +516,41 @@
 
         <!-- Tab Content: Presets -->
         <div id="tab-presets" class="tab-content hidden">
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Load Presets</h2>
-                <p class="text-gray-600">Load presets will be implemented in P-022</p>
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Load Presets</h2>
+                <p class="text-gray-600">Quick-start configurations for common load testing scenarios. Click any preset to load it into the configuration form.</p>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-medium text-blue-900">Presets preserve your Matomo URL, Site ID, and Token Auth</p>
+                        <p class="text-xs text-blue-700 mt-1">Only traffic and feature settings are changed when loading a preset.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presets Grid -->
+            <div id="presets-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Presets will be dynamically inserted here -->
+            </div>
+
+            <!-- Custom Preset Section -->
+            <div class="bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-300">
+                <div class="text-center">
+                    <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Need a Custom Configuration?</h3>
+                    <p class="text-sm text-gray-600 mb-4">Create your own configuration in the Configuration tab with exactly the settings you need.</p>
+                    <button onclick="UI.switchTab('config')" class="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-blue-600">
+                        Go to Configuration
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -546,6 +578,7 @@
     <script src="/static/js/ui.js"></script>
     <script src="/static/js/config.js"></script>
     <script src="/static/js/status.js"></script>
+    <script src="/static/js/presets.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

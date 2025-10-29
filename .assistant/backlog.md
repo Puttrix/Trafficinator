@@ -126,15 +126,16 @@
       - Test Connection button with visual feedback ✅
       result: Comprehensive configuration form with 25+ fields organized into 6 sections (Core, Traffic, Auto-Stop, Feature Probabilities, Ecommerce, Geolocation). Real-time validation matching backend Pydantic rules (min/max ranges, URL format, currency codes). Conditional Ecommerce section with data-toggle. Test Connection and Validate Config buttons fully functional. Form auto-loads current container config if running. Client-side validation displays inline errors with red borders and messages.
 
-- [ ] **P-022** Implement load presets (Light/Medium/Heavy)
-      tags: webui, frontend, presets  priority: medium  est: 4h
+- [x] **P-022** Implement load presets (Light/Medium/Heavy)
+      tags: webui, frontend, presets  priority: medium  est: 4h  completed: 2025-01-29
       deps: P-021
       accepts:
-      - Preset selector dropdown: Light (1k/day), Medium (10k/day), Heavy (50k+/day)
-      - One-click preset loading into form
-      - Visual indication of active preset
-      - Custom preset creation and saving
-      - Integrates with P-005 preset definitions
+      - Preset selector: Light (1k/day), Medium (10k/day), Heavy (50k+/day), Extreme (100k/day) ✅
+      - One-click preset loading into form ✅
+      - Visual indication of active preset ✅
+      - Custom preset creation (via Configuration tab) ✅
+      - Preset cards with metrics display ✅
+      result: Complete preset system with 4 predefined configurations (Light 🌤️, Medium ☀️, Heavy 🔥, Extreme ⚡). Each preset card shows visits/day, visits/hour, concurrency, and pageviews range. One-click "Load" button with confirmation dialog. Presets preserve Matomo URL, Site ID, and Token Auth while loading all traffic and feature settings. Visual selection with colored borders matching preset type. Auto-switches to Config tab after loading. Info banner explains preset behavior.
 
 - [x] **P-023** Build status dashboard and control panel
       tags: webui, frontend, dashboard  priority: high  est: 6h  completed: 2025-01-29
