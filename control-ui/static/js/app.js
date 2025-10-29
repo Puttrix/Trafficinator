@@ -27,6 +27,10 @@ class App {
         this.loadPresets = new LoadPresets();
         this.loadPresets.init();
 
+        // Initialize log viewer
+        this.logViewer = new LogViewer();
+        this.logViewer.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -72,9 +76,19 @@ class App {
         // Clear any existing refresh intervals
         this.stopAutoRefresh();
 
+        // Notify modules of tab deactivation
+        if (this.currentTab === 'logs' && this.logViewer) {
+            this.logViewer.onTabDeactivated();
+        }
+
         // Start refresh for status tab
         if (tabName === 'status') {
             this.startAutoRefresh();
+        }
+
+        // Notify modules of tab activation
+        if (tabName === 'logs' && this.logViewer) {
+            this.logViewer.onTabActivated();
         }
 
         // Load tab-specific data
@@ -89,7 +103,7 @@ class App {
                 // Presets will load in P-022
                 break;
             case 'logs':
-                // Logs will load in P-024
+                // Logs tab auto-loads via onTabActivated
                 break;
         }
     }
