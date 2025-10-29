@@ -1,7 +1,8 @@
 # ADR-007: Configuration-Driven Design (No Control UI)
 
-**Status:** Accepted  
+**Status:** Superseded by ADR-008  
 **Date:** 2025-09-10  
+**Superseded:** 2025-10-29  
 **Deciders:** Putte Arvfors  
 **Tags:** architecture, simplicity, decision
 

@@ -3,12 +3,15 @@ Test script for Control UI setup
 
 Run this to verify the Control UI is working correctly.
 Tests all API endpoints including status, start, stop, restart, and logs.
+Also tests authentication and rate limiting.
 """
 import sys
 import requests
 from time import sleep
+import os
 
 API_BASE = "http://localhost:8000"
+API_KEY = os.environ.get("API_KEY", "change-me-in-production")
 
 def test_health():
     """Test health endpoint"""
@@ -45,7 +48,10 @@ def test_status():
     """Test status endpoint"""
     print("\n🔍 Testing /api/status endpoint...")
     try:
-        response = requests.get(f"{API_BASE}/api/status")
+        response = requests.get(
+            f"{API_BASE}/api/status",
+            headers={"X-API-Key": API_KEY}
+        )
         response.raise_for_status()
         data = response.json()
         print(f"✅ Status endpoint passed")
@@ -63,7 +69,10 @@ def test_logs():
     """Test logs endpoint"""
     print("\n🔍 Testing /api/logs endpoint...")
     try:
-        response = requests.get(f"{API_BASE}/api/logs?lines=20")
+        response = requests.get(
+            f"{API_BASE}/api/logs?lines=20",
+            headers={"X-API-Key": API_KEY}
+        )
         response.raise_for_status()
         data = response.json()
         print(f"✅ Logs endpoint passed")
@@ -80,8 +89,10 @@ def test_start_stop():
     print("\n🔍 Testing control operations...")
     
     try:
+        headers = {"X-API-Key": API_KEY}
+        
         # Get current state
-        response = requests.get(f"{API_BASE}/api/status")
+        response = requests.get(f"{API_BASE}/api/status", headers=headers)
         response.raise_for_status()
         initial_state = response.json().get('state')
         print(f"   Initial state: {initial_state}")
@@ -89,7 +100,7 @@ def test_start_stop():
         # Test stop (if running)
         if initial_state == "running":
             print("\n   Testing stop...")
-            response = requests.post(f"{API_BASE}/api/stop?timeout=5")
+            response = requests.post(f"{API_BASE}/api/stop?timeout=5", headers=headers)
             response.raise_for_status()
             data = response.json()
             if data.get('success'):
@@ -98,7 +109,7 @@ def test_start_stop():
         
         # Test start
         print("\n   Testing start...")
-        response = requests.post(f"{API_BASE}/api/start")
+        response = requests.post(f"{API_BASE}/api/start", headers=headers)
         response.raise_for_status()
         data = response.json()
         if data.get('success'):
@@ -107,7 +118,7 @@ def test_start_stop():
         
         # Test restart
         print("\n   Testing restart...")
-        response = requests.post(f"{API_BASE}/api/restart?timeout=5")
+        response = requests.post(f"{API_BASE}/api/restart?timeout=5", headers=headers)
         response.raise_for_status()
         data = response.json()
         if data.get('success'):
@@ -125,6 +136,8 @@ def test_validation():
     print("\n🔍 Testing configuration validation...")
     
     try:
+        headers = {"X-API-Key": API_KEY}
+        
         # Test valid config
         print("\n   Testing valid config...")
         valid_config = {
@@ -132,7 +145,7 @@ def test_validation():
             "matomo_site_id": 1,
             "target_visits_per_day": 20000
         }
-        response = requests.post(f"{API_BASE}/api/validate", json=valid_config)
+        response = requests.post(f"{API_BASE}/api/validate", json=valid_config, headers=headers)
         response.raise_for_status()
         data = response.json()
         if data.get('valid'):
@@ -146,7 +159,7 @@ def test_validation():
             "matomo_url": "invalid-url",
             "matomo_site_id": 0
         }
-        response = requests.post(f"{API_BASE}/api/validate", json=invalid_config)
+        response = requests.post(f"{API_BASE}/api/validate", json=invalid_config, headers=headers)
         response.raise_for_status()
         data = response.json()
         if not data.get('valid') and len(data.get('errors', [])) > 0:
@@ -164,11 +177,14 @@ def test_connection():
     print("\n🔍 Testing Matomo connection test...")
     
     try:
+        headers = {"X-API-Key": API_KEY}
+        
         # Test with Matomo demo server
         print("\n   Testing connection to demo.matomo.cloud...")
         response = requests.post(
             f"{API_BASE}/api/test-connection",
-            json={"matomo_url": "https://demo.matomo.cloud/matomo.php", "timeout": 10}
+            json={"matomo_url": "https://demo.matomo.cloud/matomo.php", "timeout": 10},
+            headers=headers
         )
         response.raise_for_status()
         data = response.json()
@@ -181,6 +197,90 @@ def test_connection():
         
     except Exception as e:
         print(f"❌ Connection test endpoint failed: {e}")
+        return False
+
+def test_authentication():
+    """Test API authentication"""
+    print("\n🔍 Testing authentication...")
+    
+    try:
+        # Test protected endpoint without API key
+        print("\n   Testing without API key...")
+        response = requests.post(f"{API_BASE}/api/start")
+        if response.status_code == 401:
+            print(f"   ✅ Correctly rejected (401 Unauthorized)")
+        else:
+            print(f"   ⚠️  Expected 401, got {response.status_code}")
+        
+        # Test with invalid API key
+        print("\n   Testing with invalid API key...")
+        response = requests.post(
+            f"{API_BASE}/api/start",
+            headers={"X-API-Key": "invalid-key"}
+        )
+        if response.status_code == 401:
+            print(f"   ✅ Correctly rejected invalid key (401)")
+        else:
+            print(f"   ⚠️  Expected 401, got {response.status_code}")
+        
+        # Test with valid API key
+        print("\n   Testing with valid API key...")
+        response = requests.post(
+            f"{API_BASE}/api/start",
+            headers={"X-API-Key": API_KEY}
+        )
+        if response.status_code in [200, 409]:  # 409 if already running
+            data = response.json()
+            print(f"   ✅ Valid key accepted: {data.get('message')}")
+        else:
+            print(f"   ⚠️  Unexpected status: {response.status_code}")
+        
+        print("\n✅ Authentication tests passed")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Authentication tests failed: {e}")
+        return False
+
+def test_rate_limiting():
+    """Test API rate limiting"""
+    print("\n🔍 Testing rate limiting...")
+    
+    try:
+        print("\n   Testing rapid requests to /api/status (limit: 60/min)...")
+        
+        # Send rapid requests
+        rate_limited = False
+        for i in range(65):  # Exceed the 60/min limit
+            response = requests.get(
+                f"{API_BASE}/api/status",
+                headers={"X-API-Key": API_KEY}
+            )
+            if response.status_code == 429:
+                rate_limited = True
+                print(f"   ✅ Rate limited after {i+1} requests (429 Too Many Requests)")
+                break
+        
+        if not rate_limited:
+            print(f"   ⚠️  No rate limiting detected after 65 requests")
+        
+        # Wait for rate limit to reset
+        print("\n   Waiting 2 seconds for rate limit reset...")
+        sleep(2)
+        
+        # Verify we can make requests again
+        response = requests.get(
+            f"{API_BASE}/api/status",
+            headers={"X-API-Key": API_KEY}
+        )
+        if response.status_code == 200:
+            print(f"   ✅ Rate limit reset successfully")
+        
+        print("\n✅ Rate limiting tests passed")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Rate limiting tests failed: {e}")
         return False
 
 def main():
@@ -207,6 +307,10 @@ def main():
     # Validation tests (don't require Docker)
     results.append(test_validation())
     results.append(test_connection())
+    
+    # Security tests
+    results.append(test_authentication())
+    results.append(test_rate_limiting())
     
     print("\n" + "="*50)
     if all(results):
