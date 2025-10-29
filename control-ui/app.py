@@ -4,10 +4,15 @@ Trafficinator Control UI - FastAPI Application
 Main application entry point for the web-based control interface.
 """
 import os
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, Dict, Any
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from docker_client import DockerClient
 from container_manager import ContainerManager
@@ -19,22 +24,15 @@ from models import (
     RestartResponse,
     LogsResponse,
 )
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="Trafficinator Control UI",
-    description="Web-based control interface for Trafficinator load generator",
-    version="1.0.0",
+from config_validator import (
+    ConfigValidator,
+    ConfigValidationResult,
+    MatomoConnectionResult,
 )
+from auth import verify_api_key, is_auth_enabled
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 # Initialize Docker client and container manager
 docker_client = DockerClient()
@@ -52,6 +50,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Warning: Could not connect to Docker: {e}")
     
+    # Log authentication status
+    if is_auth_enabled():
+        print("🔒 API authentication: ENABLED")
+    else:
+        print("⚠️  API authentication: DISABLED (set CONTROL_UI_API_KEY to enable)")
+    
     yield
     
     # Shutdown
@@ -59,11 +63,51 @@ async def lifespan(app: FastAPI):
     docker_client.disconnect()
 
 
-app.router.lifespan_context = lifespan
+# Initialize FastAPI app
+app = FastAPI(
+    title="Trafficinator Control UI",
+    description="Web-based control interface for Trafficinator load generator",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Add rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Configure CORS
+cors_origins = os.getenv("CORS_ORIGINS", "*")
+if cors_origins == "*":
+    # Allow all origins
+    allow_origins = ["*"]
+else:
+    # Parse comma-separated list
+    allow_origins = [origin.strip() for origin in cors_origins.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    max_age=3600,
+)
+
+# Add security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 @app.get("/health")
-async def health_check():
+@limiter.limit("30/minute")
+async def health_check(request: Request):
     """
     Health check endpoint
     
@@ -79,6 +123,7 @@ async def health_check():
         "version": "1.0.0",
         "docker": docker_status,
         "container_found": container_exists,
+        "auth_enabled": is_auth_enabled(),
     }
 
 
@@ -102,6 +147,8 @@ async def root():
             "stop": "POST /api/stop",
             "restart": "POST /api/restart",
             "logs": "GET /api/logs",
+            "validate": "POST /api/validate",
+            "test_connection": "POST /api/test-connection",
         },
     }
 
@@ -111,7 +158,8 @@ async def root():
 # ============================================================================
 
 @app.get("/api/status", response_model=StatusResponse)
-async def get_status():
+@limiter.limit("60/minute")
+async def get_status(request: Request, authenticated: bool = Depends(verify_api_key)):
     """
     Get container status, configuration, and runtime statistics
     
@@ -138,12 +186,17 @@ async def get_status():
 
 
 @app.post("/api/start", response_model=StartResponse)
-async def start_container(request: StartRequest = None):
+@limiter.limit("10/minute")
+async def start_container(
+    request: Request,
+    start_request: Optional[StartRequest] = None,
+    authenticated: bool = Depends(verify_api_key)
+):
     """
     Start the load generator container
     
     Args:
-        request: Optional start request with config
+        start_request: Optional start request with config
     
     Returns:
         StartResponse: Start operation result
@@ -162,12 +215,12 @@ async def start_container(request: StartRequest = None):
         current_state = docker_client.get_container_state()
         
         # Handle restart_if_running
-        if request and request.restart_if_running and current_state == "running":
+        if start_request and start_request.restart_if_running and current_state == "running":
             result = container_manager.restart_container()
             return StartResponse(**result)
         
         # Pass config if provided (note: not yet implemented fully)
-        config = request.config if request else None
+        config = start_request.config if start_request else None
         result = container_manager.start_container(config=config)
         
         return StartResponse(**result)
@@ -179,7 +232,12 @@ async def start_container(request: StartRequest = None):
 
 
 @app.post("/api/stop", response_model=StopResponse)
-async def stop_container(timeout: int = Query(10, ge=1, le=60, description="Timeout in seconds")):
+@limiter.limit("10/minute")
+async def stop_container(
+    request: Request,
+    timeout: int = Query(10, ge=1, le=60, description="Timeout in seconds"),
+    authenticated: bool = Depends(verify_api_key)
+):
     """
     Stop the load generator container gracefully
     
@@ -209,7 +267,12 @@ async def stop_container(timeout: int = Query(10, ge=1, le=60, description="Time
 
 
 @app.post("/api/restart", response_model=RestartResponse)
-async def restart_container(timeout: int = Query(10, ge=1, le=60, description="Timeout in seconds")):
+@limiter.limit("10/minute")
+async def restart_container(
+    request: Request,
+    timeout: int = Query(10, ge=1, le=60, description="Timeout in seconds"),
+    authenticated: bool = Depends(verify_api_key)
+):
     """
     Restart the load generator container
     
@@ -239,9 +302,12 @@ async def restart_container(timeout: int = Query(10, ge=1, le=60, description="T
 
 
 @app.get("/api/logs", response_model=LogsResponse)
+@limiter.limit("30/minute")
 async def get_logs(
+    request: Request,
     lines: int = Query(100, ge=10, le=10000, description="Number of log lines to retrieve"),
-    filter: Optional[str] = Query(None, description="Filter logs by text (case-insensitive)")
+    filter: Optional[str] = Query(None, description="Filter logs by text (case-insensitive)"),
+    authenticated: bool = Depends(verify_api_key)
 ):
     """
     Get container logs
@@ -269,6 +335,60 @@ async def get_logs(
         raise HTTPException(
             status_code=500,
             detail=f"Error retrieving logs: {str(e)}"
+        )
+
+
+@app.post("/api/validate", response_model=ConfigValidationResult)
+@limiter.limit("30/minute")
+async def validate_config(
+    request: Request,
+    config: Dict[str, Any] = Body(...),
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Validate load generator configuration
+    
+    Args:
+        config: Configuration dictionary to validate
+    
+    Returns:
+        ConfigValidationResult: Validation result with errors and warnings
+    """
+    try:
+        result = ConfigValidator.validate_config(config)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error validating configuration: {str(e)}"
+        )
+
+
+@app.post("/api/test-connection", response_model=MatomoConnectionResult)
+@limiter.limit("20/minute")
+async def test_connection(
+    request: Request,
+    matomo_url: str = Body(..., embed=True),
+    timeout: float = Body(10.0, ge=1, le=60, embed=True),
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Test connectivity to Matomo server
+    
+    Args:
+        matomo_url: Matomo tracking endpoint URL
+        timeout: Request timeout in seconds (1-60)
+    
+    Returns:
+        MatomoConnectionResult: Connection test result
+    """
+    try:
+        result = await ConfigValidator.test_matomo_connection(matomo_url, timeout)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error testing connection: {str(e)}"
         )
 
 

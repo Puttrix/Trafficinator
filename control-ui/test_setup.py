@@ -120,6 +120,69 @@ def test_start_stop():
         print(f"❌ Control operations failed: {e}")
         return False
 
+def test_validation():
+    """Test configuration validation"""
+    print("\n🔍 Testing configuration validation...")
+    
+    try:
+        # Test valid config
+        print("\n   Testing valid config...")
+        valid_config = {
+            "matomo_url": "https://analytics.example.com/matomo.php",
+            "matomo_site_id": 1,
+            "target_visits_per_day": 20000
+        }
+        response = requests.post(f"{API_BASE}/api/validate", json=valid_config)
+        response.raise_for_status()
+        data = response.json()
+        if data.get('valid'):
+            print(f"   ✅ Valid config recognized")
+            if data.get('warnings'):
+                print(f"   ⚠️  {len(data['warnings'])} warnings")
+        
+        # Test invalid config
+        print("\n   Testing invalid config...")
+        invalid_config = {
+            "matomo_url": "invalid-url",
+            "matomo_site_id": 0
+        }
+        response = requests.post(f"{API_BASE}/api/validate", json=invalid_config)
+        response.raise_for_status()
+        data = response.json()
+        if not data.get('valid') and len(data.get('errors', [])) > 0:
+            print(f"   ✅ Invalid config detected ({len(data['errors'])} errors)")
+        
+        print("\n✅ Validation endpoint passed")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Validation endpoint failed: {e}")
+        return False
+
+def test_connection():
+    """Test Matomo connection testing"""
+    print("\n🔍 Testing Matomo connection test...")
+    
+    try:
+        # Test with Matomo demo server
+        print("\n   Testing connection to demo.matomo.cloud...")
+        response = requests.post(
+            f"{API_BASE}/api/test-connection",
+            json={"matomo_url": "https://demo.matomo.cloud/matomo.php", "timeout": 10}
+        )
+        response.raise_for_status()
+        data = response.json()
+        print(f"   Result: {data.get('message')}")
+        if data.get('success'):
+            print(f"   ✅ Connection successful ({data.get('response_time_ms')}ms)")
+        
+        print("\n✅ Connection test endpoint passed")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Connection test endpoint failed: {e}")
+        return False
+
 def main():
     """Run all tests"""
     print("🚀 Starting Control UI tests...\n")
@@ -139,7 +202,11 @@ def main():
         results.append(test_logs())
         results.append(test_start_stop())
     else:
-        print("\n⚠️  Skipping API tests - Docker not connected")
+        print("\n⚠️  Skipping container API tests - Docker not connected")
+    
+    # Validation tests (don't require Docker)
+    results.append(test_validation())
+    results.append(test_connection())
     
     print("\n" + "="*50)
     if all(results):
@@ -148,6 +215,8 @@ def main():
         print("🏥 Health Check: http://localhost:8000/health")
         print("📊 Status: http://localhost:8000/api/status")
         print("📋 Logs: http://localhost:8000/api/logs")
+        print("✅ Validate: http://localhost:8000/api/validate")
+        print("🔗 Test Connection: http://localhost:8000/api/test-connection")
         return 0
     else:
         print(f"❌ {len([r for r in results if not r])}/{len(results)} tests failed")

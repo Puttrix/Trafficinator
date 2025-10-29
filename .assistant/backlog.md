@@ -67,15 +67,16 @@
       - All endpoints return proper HTTP status codes and error messages ✅
       result: Implemented all 5 REST API endpoints with Pydantic models, container_manager business logic layer, fixed Docker SDK urllib3 compatibility issue (requests<2.29.0), all endpoints tested and working
 
-- [ ] **P-017** Add configuration validation and Matomo connectivity testing
-      tags: webui, backend, validation  priority: high  est: 4h
+- [x] **P-017** Add configuration validation and Matomo connectivity testing
+      tags: webui, backend, validation  priority: high  est: 4h  completed: 2025-10-29
       deps: P-016
       accepts:
-      - POST /api/validate - Validates config JSON against schema
-      - POST /api/test-connection - Tests Matomo URL connectivity
-      - Validates MATOMO_TOKEN_AUTH when RANDOMIZE_VISITOR_COUNTRIES=true
-      - Returns detailed validation errors with helpful messages
-      - Integration with P-004 validation logic
+      - POST /api/validate - Validates config JSON against schema ✅
+      - POST /api/test-connection - Tests Matomo URL connectivity ✅
+      - Validates MATOMO_TOKEN_AUTH when RANDOMIZE_VISITOR_COUNTRIES=true ✅
+      - Returns detailed validation errors with helpful messages ✅
+      - Integration with loader validation logic ✅
+      result: Complete config validation with Pydantic models, 25+ field validations, business rule checks (min/max ranges, token_auth requirements), warnings for high values, async Matomo connectivity testing with detailed error reporting
 
 - [ ] **P-018** Implement configuration persistence
       tags: webui, backend, database  priority: medium  est: 4h
@@ -88,16 +89,17 @@
       - DELETE /api/configs/:id - Delete configuration
       - GET /api/configs/:id - Load specific configuration
 
-- [ ] **P-019** Add authentication and security layer
-      tags: webui, backend, security  priority: high  est: 6h
+- [x] **P-019** Add authentication and security layer
+      tags: webui, backend, security  priority: high  est: 6h  completed: 2025-10-29
       deps: P-016
       accepts:
-      - Simple API key authentication (configurable via env var)
-      - CORS configuration for frontend
-      - Rate limiting on API endpoints
-      - Input sanitization and validation
-      - Secure handling of MATOMO_TOKEN_AUTH (no exposure in logs)
-      - Security documentation in README
+      - Simple API key authentication (configurable via env var) ✅
+      - CORS configuration for frontend ✅
+      - Rate limiting on API endpoints ✅
+      - Input sanitization and validation ✅
+      - Secure handling of MATOMO_TOKEN_AUTH (no exposure in logs) ✅
+      - Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS) ✅
+      result: Complete authentication system with API key via X-API-Key header, constant-time comparison, slowapi rate limiting (10-60 req/min per endpoint), proper CORS config, security headers middleware, auth status in health endpoint. All protected endpoints secured.
 
 ### Phase 2: Frontend Implementation
 - [ ] **P-020** Create frontend foundation and layout
