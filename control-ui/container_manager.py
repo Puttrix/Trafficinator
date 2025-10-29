@@ -323,7 +323,8 @@ class ContainerManager:
             if was_running:
                 self.docker.stop_container(timeout=10)
             
-            self.docker.remove_container()
+            # Remove container using Docker SDK
+            container.remove(force=True)
             
             # Create new container with updated environment
             new_container = self.docker.client.containers.create(

@@ -195,22 +195,32 @@ class StatusDashboard {
             }
         }
 
-        // Total visits (placeholder - will be implemented when we have metrics)
+        // Total visits
         const totalVisitsEl = document.getElementById('metric-total-visits');
         const totalVisitsDetailEl = document.getElementById('metric-total-visits-detail');
         if (totalVisitsEl && totalVisitsDetailEl) {
-            // TODO: Get actual visit count from container logs or metrics
-            totalVisitsEl.textContent = '--';
-            totalVisitsDetailEl.textContent = 'Metrics not available yet';
+            const visitsGenerated = status.stats?.visits_generated;
+            if (visitsGenerated !== null && visitsGenerated !== undefined) {
+                totalVisitsEl.textContent = parseInt(visitsGenerated).toLocaleString();
+                totalVisitsDetailEl.textContent = 'Total visits generated';
+            } else {
+                totalVisitsEl.textContent = '--';
+                totalVisitsDetailEl.textContent = 'Metrics not available yet';
+            }
         }
 
-        // Current rate (placeholder)
+        // Current rate
         const rateEl = document.getElementById('metric-rate');
         const rateDetailEl = document.getElementById('metric-rate-detail');
         if (rateEl && rateDetailEl) {
-            // TODO: Calculate from actual metrics
-            rateEl.textContent = '--';
-            rateDetailEl.textContent = 'Calculating...';
+            const currentRate = status.stats?.current_rate;
+            if (currentRate) {
+                rateEl.textContent = currentRate;
+                rateDetailEl.textContent = 'Current visit rate';
+            } else {
+                rateEl.textContent = '--';
+                rateDetailEl.textContent = 'Calculating...';
+            }
         }
 
         // Daily target
