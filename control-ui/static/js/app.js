@@ -19,6 +19,10 @@ class App {
         this.configForm = new ConfigForm();
         this.configForm.init();
 
+        // Initialize status dashboard
+        this.statusDashboard = new StatusDashboard();
+        this.statusDashboard.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -86,25 +90,17 @@ class App {
         }
     }
 
-    // Load status data (placeholder for P-023)
+    // Load status data
     async loadStatusData() {
-        try {
-            const status = await api.getStatus();
-            console.log('Status loaded:', status);
-            // Status dashboard will be implemented in P-023
-        } catch (error) {
-            console.error('Failed to load status:', error);
-            UI.showAlert(`Failed to load status: ${error.message}`, 'error');
+        if (this.statusDashboard) {
+            await this.statusDashboard.loadStatus();
         }
     }
 
     // Start auto-refresh for active tab
     startAutoRefresh() {
-        if (this.currentTab === 'status') {
-            // Refresh every 5 seconds for status dashboard (P-023 requirement)
-            this.refreshInterval = setInterval(() => {
-                this.loadStatusData();
-            }, 5000);
+        if (this.currentTab === 'status' && this.statusDashboard) {
+            this.statusDashboard.startAutoRefresh();
         }
     }
 
@@ -113,6 +109,11 @@ class App {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
+        }
+        
+        // Also stop status dashboard refresh
+        if (this.statusDashboard) {
+            this.statusDashboard.stopAutoRefresh();
         }
     }
 
