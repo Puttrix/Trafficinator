@@ -35,6 +35,10 @@ class App {
         this.urlManager = new URLManager();
         this.urlManager.init();
 
+        // Initialize event manager
+        this.eventManager = new EventManager();
+        this.eventManager.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -87,6 +91,9 @@ class App {
         if (this.currentTab === 'urls' && this.urlManager) {
             this.urlManager.onTabDeactivated();
         }
+        if (this.currentTab === 'events' && this.eventManager) {
+            this.eventManager.onTabDeactivated();
+        }
 
         // Start refresh for status tab
         if (tabName === 'status') {
@@ -99,6 +106,9 @@ class App {
         }
         if (tabName === 'urls' && this.urlManager) {
             this.urlManager.onTabActivated();
+        }
+        if (tabName === 'events' && this.eventManager) {
+            this.eventManager.onTabActivated();
         }
 
         // Load tab-specific data
@@ -117,6 +127,9 @@ class App {
                 break;
             case 'urls':
                 // URLs tab auto-loads via onTabActivated
+                break;
+            case 'events':
+                // Events tab auto-loads via onTabActivated
                 break;
         }
     }

@@ -48,7 +48,7 @@ class URLManager {
         UI.showLoading('Loading URLs...');
         
         try {
-            const data = await API.getUrls();
+            const data = await api.getUrls();
             
             // Update editor
             document.getElementById('urls-editor').value = data.content;
@@ -92,7 +92,7 @@ class URLManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Key': API.apiKey
+                    'X-API-Key': api.apiKey
                 },
                 body: JSON.stringify({ content })
             });
@@ -138,7 +138,7 @@ class URLManager {
         UI.showLoading('Saving URLs...');
         
         try {
-            const data = await API.uploadUrls(content);
+            const data = await api.uploadUrls(content);
             
             UI.hideLoading();
             
@@ -197,7 +197,7 @@ class URLManager {
         UI.showLoading('Resetting URLs...');
         
         try {
-            const data = await API.resetUrls();
+            const data = await api.resetUrls();
             
             UI.hideLoading();
             

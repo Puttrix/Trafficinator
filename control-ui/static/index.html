@@ -67,6 +67,9 @@
                 <button data-tab="urls" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
                     URLs
                 </button>
+                <button data-tab="events" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Events
+                </button>
             </div>
         </div>
     </nav>
@@ -750,6 +753,125 @@
                 </div>
             </div>
         </div>
+
+        <!-- Events Tab -->
+        <div id="events-tab" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Event Management</h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Customize Matomo events that are generated during load testing. Configure click events and random events with their probabilities.
+                    </p>
+                    <div class="mt-2 p-3 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            <strong>Note:</strong> After saving event changes, you must restart the container for them to take effect.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Status Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-500 mb-1">Current Configuration</p>
+                            <p class="text-lg font-medium text-gray-900">
+                                <span id="events-click-count">Loading...</span> click events, 
+                                <span id="events-random-count">Loading...</span> random events
+                                <span class="mx-2">•</span>
+                                <span id="events-source">source: checking...</span>
+                            </p>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Click probability: <span id="events-click-prob">0%</span> &middot; 
+                                Random probability: <span id="events-random-prob">0%</span>
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-load-events" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                            <button id="btn-download-events" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Download
+                            </button>
+                            <button id="btn-reset-events" class="btn-danger">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">Event Configuration</h3>
+                            <span class="text-sm text-gray-500">JSON format</span>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <textarea 
+                                id="events-editor" 
+                                class="w-full h-96 p-3 border border-gray-300 rounded-md font-mono text-sm focus:ring-primary focus:border-primary"
+                                placeholder='{"click_events": [...], "random_events": [...], "click_events_probability": 0.25, "random_events_probability": 0.12}'
+                            ></textarea>
+                            <div class="flex items-center justify-between text-sm text-gray-500">
+                                <span><span id="events-line-count">0</span> lines</span>
+                                <span>Format: JSON</span>
+                            </div>
+                        </div>
+
+                        <input type="file" id="events-file-input" class="hidden" accept=".json" />
+
+                        <div class="flex gap-2 pt-2 border-t border-gray-200">
+                            <button id="btn-validate-events" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Validate Events
+                            </button>
+                            <button id="btn-upload-events-file" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Upload File
+                            </button>
+                            <div class="flex-1"></div>
+                            <button id="btn-save-events" class="btn-primary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                </svg>
+                                Save Events
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Results -->
+                <div id="events-validation-results" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Validation Results</h3>
+                    <div id="events-validation-content" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Statistics Preview -->
+                <div id="events-statistics-preview" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Event Statistics</h3>
+                    <div id="events-statistics-content" class="space-y-4">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -763,13 +885,14 @@
     </footer>
 
     <!-- Scripts -->
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/ui.js"></script>
-    <script src="/static/js/config.js"></script>
-    <script src="/static/js/status.js"></script>
-    <script src="/static/js/presets.js"></script>
-    <script src="/static/js/logs.js"></script>
-    <script src="/static/js/urls.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/api.js?v=2"></script>
+    <script src="/static/js/ui.js?v=2"></script>
+    <script src="/static/js/config.js?v=2"></script>
+    <script src="/static/js/status.js?v=2"></script>
+    <script src="/static/js/presets.js?v=2"></script>
+    <script src="/static/js/logs.js?v=2"></script>
+    <script src="/static/js/urls.js?v=2"></script>
+    <script src="/static/js/events.js?v=2"></script>
+    <script src="/static/js/app.js?v=2"></script>
 </body>
 </html>

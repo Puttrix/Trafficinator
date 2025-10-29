@@ -162,6 +162,24 @@ class API {
             method: 'DELETE'
         });
     }
+
+    // Event Management
+    async getEvents() {
+        return this.request('/api/events');
+    }
+
+    async uploadEvents(content) {
+        return this.request('/api/events', {
+            method: 'POST',
+            body: JSON.stringify({ content })
+        });
+    }
+
+    async resetEvents() {
+        return this.request('/api/events', {
+            method: 'DELETE'
+        });
+    }
 }
 
 // Create global API instance

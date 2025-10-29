@@ -617,6 +617,245 @@ async def reset_urls(
         )
 
 
+@app.get("/api/events")
+@limiter.limit("20/minute")
+async def get_events(
+    request: Request,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Get current event configuration
+    
+    Checks three locations in priority order:
+    1. /app/data/events.json - Custom events (uploaded via UI)
+    2. loader.py - Embedded default events
+    
+    Returns:
+        Dict with event configuration, source, and statistics
+    """
+    try:
+        from event_validator import validate_events_config, parse_events_from_loader
+        import json
+        
+        # Check for custom events file
+        events_path = Path("/app/data/events.json")
+        source = "default"
+        config = None
+        
+        if events_path.exists():
+            # Load custom events
+            try:
+                config = json.loads(events_path.read_text())
+                source = "custom"
+            except json.JSONDecodeError:
+                # Fall back to default if custom file is invalid
+                pass
+        
+        # If no custom events, use default hardcoded events
+        if config is None:
+            # Use default event configuration from loader.py
+            config = {
+                'click_events_probability': 0.25,
+                'random_events_probability': 0.12,
+                'click_events': [
+                    {'category': 'Navigation', 'action': 'Menu Click', 'name': 'Main Menu', 'value': None},
+                    {'category': 'Navigation', 'action': 'Button Click', 'name': 'Get Started', 'value': None},
+                    {'category': 'Navigation', 'action': 'Link Click', 'name': 'Learn More', 'value': None},
+                    {'category': 'UI', 'action': 'Tab Click', 'name': 'Product Features', 'value': None},
+                    {'category': 'UI', 'action': 'Accordion Click', 'name': 'FAQ Section', 'value': None},
+                    {'category': 'UI', 'action': 'Modal Open', 'name': 'Contact Form', 'value': None},
+                    {'category': 'UI', 'action': 'Image Click', 'name': 'Product Gallery', 'value': None},
+                    {'category': 'Social', 'action': 'Share Click', 'name': 'Twitter Share', 'value': None},
+                    {'category': 'Social', 'action': 'Share Click', 'name': 'Facebook Share', 'value': None},
+                    {'category': 'Social', 'action': 'Like Click', 'name': 'Article Like', 'value': None},
+                    {'category': 'Form', 'action': 'Submit', 'name': 'Newsletter Signup', 'value': None},
+                    {'category': 'Form', 'action': 'Focus', 'name': 'Search Input', 'value': None},
+                    {'category': 'Video', 'action': 'Play', 'name': 'Tutorial Video', 'value': None},
+                    {'category': 'Video', 'action': 'Pause', 'name': 'Product Demo', 'value': None},
+                    {'category': 'CTA', 'action': 'Click', 'name': 'Free Trial', 'value': None},
+                    {'category': 'CTA', 'action': 'Click', 'name': 'Request Quote', 'value': None},
+                ],
+                'random_events': [
+                    {'category': 'Engagement', 'action': 'Scroll', 'name': 'Page Bottom', 'value': 100},
+                    {'category': 'Engagement', 'action': 'Time on Page', 'name': 'Long Read', 'value': 300},
+                    {'category': 'Performance', 'action': 'Load Time', 'name': 'Page Load', 'value': 1200},
+                    {'category': 'Error', 'action': '404 Error', 'name': 'Broken Link', 'value': None},
+                    {'category': 'Error', 'action': 'Form Error', 'name': 'Validation Failed', 'value': None},
+                    {'category': 'Feature', 'action': 'Tool Usage', 'name': 'Calculator', 'value': 1},
+                    {'category': 'Feature', 'action': 'Filter Applied', 'name': 'Product Filter', 'value': None},
+                    {'category': 'Feature', 'action': 'Sort Applied', 'name': 'Price Sort', 'value': None},
+                    {'category': 'Content', 'action': 'Print', 'name': 'Article Print', 'value': None},
+                    {'category': 'Content', 'action': 'Bookmark', 'name': 'Page Bookmark', 'value': None},
+                    {'category': 'Mobile', 'action': 'Swipe', 'name': 'Image Gallery', 'value': None},
+                    {'category': 'Mobile', 'action': 'Tap', 'name': 'Phone Number', 'value': None},
+                    {'category': 'Analytics', 'action': 'Conversion', 'name': 'Goal Complete', 'value': 50},
+                    {'category': 'Analytics', 'action': 'Exit Intent', 'name': 'Modal Trigger', 'value': None},
+                    {'category': 'User', 'action': 'Login', 'name': 'User Login', 'value': None},
+                    {'category': 'User', 'action': 'Logout', 'name': 'User Logout', 'value': None},
+                ]
+            }
+            source = "default"
+        
+        # Validate configuration
+        validation = validate_events_config(config)
+        
+        return {
+            "config": config,
+            "source": source,
+            "validation": validation
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving events: {str(e)}"
+        )
+
+
+@app.post("/api/events")
+@limiter.limit("10/minute")
+async def upload_events(
+    request: Request,
+    body: URLContentRequest,  # Reuse same model since it's just content
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Upload custom event configuration
+    
+    Note: Requires container restart to take effect
+    
+    Args:
+        body: URLContentRequest with JSON content
+    
+    Returns:
+        Dict with validation results and save status
+    """
+    try:
+        from event_validator import validate_events_config
+        import json
+        
+        # Parse JSON
+        try:
+            config = json.loads(body.content)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON: {str(e)}"
+            )
+        
+        # Validate events
+        validation = validate_events_config(config)
+        
+        if not validation['valid']:
+            return {
+                "success": False,
+                "message": f"Validation failed: {len(validation['errors'])} errors found",
+                "validation": validation,
+                "restart_required": False
+            }
+        
+        # Save to persistent location
+        events_path = Path("/app/data/events.json")
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        events_path.write_text(json.dumps(config, indent=2))
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded {validation['stats']['click_events_count']} click events and {validation['stats']['random_events_count']} random events. Restart container to apply changes.",
+            "validation": validation,
+            "restart_required": True
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error uploading events: {str(e)}"
+        )
+
+
+@app.post("/api/events/validate")
+@limiter.limit("20/minute")
+async def validate_events_endpoint(
+    request: Request,
+    body: URLContentRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Validate event configuration without saving
+    
+    Args:
+        body: URLContentRequest with JSON content
+    
+    Returns:
+        Validation results
+    """
+    try:
+        from event_validator import validate_events_config
+        import json
+        
+        # Parse JSON
+        try:
+            config = json.loads(body.content)
+        except json.JSONDecodeError as e:
+            return {
+                "valid": False,
+                "errors": [f"Invalid JSON: {str(e)}"],
+                "warnings": [],
+                "stats": {}
+            }
+        
+        # Validate events
+        validation = validate_events_config(config)
+        
+        return validation
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error validating events: {str(e)}"
+        )
+
+
+@app.delete("/api/events")
+@limiter.limit("10/minute")
+async def reset_events(
+    request: Request,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Reset events to default (embedded in loader.py)
+    
+    Note: Requires container restart to take effect
+    
+    Returns:
+        Dict with reset status
+    """
+    try:
+        # Remove custom events file
+        events_path = Path("/app/data/events.json")
+        if events_path.exists():
+            events_path.unlink()
+            return {
+                "success": True,
+                "message": "Events reset to defaults. Restart container to apply changes.",
+                "restart_required": True
+            }
+        else:
+            return {
+                "success": True,
+                "message": "Already using default events",
+                "restart_required": False
+            }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error resetting events: {str(e)}"
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
