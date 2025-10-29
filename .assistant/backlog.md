@@ -113,17 +113,18 @@
       - Served from FastAPI static files endpoint ✅
       result: Complete responsive web UI with Tailwind CSS CDN, 4-tab navigation (Status/Config/Presets/Logs), comprehensive UI helper functions (loading overlays, alerts, connection status), API client with authentication handling, tab persistence via localStorage, and formatting utilities. Static files mounted at /static, UI served at /ui endpoint.
 
-- [ ] **P-021** Build configuration form with validation
-      tags: webui, frontend, forms  priority: high  est: 8h
+- [x] **P-021** Build configuration form with validation
+      tags: webui, frontend, forms  priority: high  est: 8h  completed: 2025-01-29
       deps: P-017, P-020
       accepts:
-      - Form fields for all environment variables
-      - Real-time client-side validation
-      - Grouped fields: Core, Traffic, Features, Advanced
-      - Conditional field display (e.g., show token_auth when country randomization enabled)
-      - Help text/tooltips for each field
-      - Save/Load configuration buttons
-      - Test Connection button with visual feedback
+      - Form fields for all environment variables ✅
+      - Real-time client-side validation ✅
+      - Grouped fields: Core, Traffic, Features, Advanced ✅
+      - Conditional field display (ecommerce settings when probability > 0) ✅
+      - Help text/tooltips for each field ✅
+      - Save/Load configuration buttons ✅
+      - Test Connection button with visual feedback ✅
+      result: Comprehensive configuration form with 25+ fields organized into 6 sections (Core, Traffic, Auto-Stop, Feature Probabilities, Ecommerce, Geolocation). Real-time validation matching backend Pydantic rules (min/max ranges, URL format, currency codes). Conditional Ecommerce section with data-toggle. Test Connection and Validate Config buttons fully functional. Form auto-loads current container config if running. Client-side validation displays inline errors with red borders and messages.
 
 - [ ] **P-022** Implement load presets (Light/Medium/Heavy)
       tags: webui, frontend, presets  priority: medium  est: 4h

@@ -15,6 +15,10 @@ class App {
         // Initialize API key management
         APIKeyManager.init();
 
+        // Initialize configuration form
+        this.configForm = new ConfigForm();
+        this.configForm.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
