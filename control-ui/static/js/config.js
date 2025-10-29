@@ -192,7 +192,9 @@ class ConfigForm {
             } else if (input.type === 'checkbox') {
                 config[key] = input.checked;
             } else {
-                config[key] = value;
+                // Only include the value if it's not empty
+                // Empty strings can fail backend validation
+                config[key] = value.trim();
             }
         }
         
@@ -250,7 +252,7 @@ class ConfigForm {
         let error = null;
         
         // Required fields
-        if (input.hasAttribute('required') && !value) {
+        if (input.hasAttribute('required') && (!value || value.trim() === '')) {
             error = 'This field is required';
         }
         

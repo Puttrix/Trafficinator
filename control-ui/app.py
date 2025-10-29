@@ -360,7 +360,7 @@ async def get_logs(
 @limiter.limit("30/minute")
 async def validate_config(
     request: Request,
-    config: Dict[str, Any] = Body(...),
+    config: Dict[str, Any] = Body(..., embed=True),
     authenticated: bool = Depends(verify_api_key)
 ):
     """
