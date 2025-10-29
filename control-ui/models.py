@@ -99,3 +99,8 @@ class LogsResponse(BaseModel):
     logs: str = Field(..., description="Container logs")
     lines_returned: int = Field(..., description="Number of log lines returned")
     container_state: str = Field(..., description="Current container state")
+
+
+class URLContentRequest(BaseModel):
+    """Request for URL validation/upload"""
+    content: str = Field(..., description="URL file content (one URL per line)")

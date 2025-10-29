@@ -31,6 +31,10 @@ class App {
         this.logViewer = new LogViewer();
         this.logViewer.init();
 
+        // Initialize URL manager
+        this.urlManager = new URLManager();
+        this.urlManager.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -80,6 +84,9 @@ class App {
         if (this.currentTab === 'logs' && this.logViewer) {
             this.logViewer.onTabDeactivated();
         }
+        if (this.currentTab === 'urls' && this.urlManager) {
+            this.urlManager.onTabDeactivated();
+        }
 
         // Start refresh for status tab
         if (tabName === 'status') {
@@ -89,6 +96,9 @@ class App {
         // Notify modules of tab activation
         if (tabName === 'logs' && this.logViewer) {
             this.logViewer.onTabActivated();
+        }
+        if (tabName === 'urls' && this.urlManager) {
+            this.urlManager.onTabActivated();
         }
 
         // Load tab-specific data
@@ -104,6 +114,9 @@ class App {
                 break;
             case 'logs':
                 // Logs tab auto-loads via onTabActivated
+                break;
+            case 'urls':
+                // URLs tab auto-loads via onTabActivated
                 break;
         }
     }

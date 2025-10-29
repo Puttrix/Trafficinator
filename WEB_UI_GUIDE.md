@@ -24,6 +24,7 @@ The Trafficinator Web UI provides a modern, browser-based interface for controll
 - **Configuration Management** - Easy form-based configuration with validation
 - **Load Presets** - Quick access to 4 pre-configured load scenarios
 - **Live Log Viewing** - Real-time log streaming with filtering and search
+- **URL Management** - Edit URL list directly via Web UI
 - **Container Control** - Start, stop, and restart operations
 - **REST API** - Full programmatic access for automation
 
@@ -98,7 +99,7 @@ CONTROL_UI_API_KEY="your-long-random-secure-key"
 
 ## User Interface
 
-The Web UI consists of 4 main tabs:
+The Web UI consists of 5 main tabs:
 
 ### 1. Status Tab
 
@@ -234,6 +235,56 @@ The Web UI consists of 4 main tabs:
 - Total lines in container logs
 - Filtered lines (after search)
 - Container status
+
+---
+
+### 5. URLs Tab
+
+**Purpose:** Manage the URL list that defines which pages the load generator visits.
+
+**Features:**
+- **URL Editor** - Edit URLs directly in the browser
+- **Live Validation** - Check URL format and structure
+- **File Upload** - Import URLs from .txt files
+- **Download** - Export current URL list
+- **Reset to Defaults** - Restore embedded URL list
+- **Structure Preview** - View category distribution and statistics
+- **Format Support**
+  - One URL per line
+  - Optional page titles: `URL<TAB>Title`
+  - Comments: Lines starting with `#`
+  - Blank lines ignored
+
+**Usage:**
+```
+1. Click Refresh to load current URLs
+2. Edit URLs in the textarea editor
+3. Click Validate to check format
+4. Review validation results and structure
+5. Click Save to upload new URLs
+6. Restart container to apply changes
+```
+
+**Validation Results:**
+- ✅ Valid/Invalid status
+- URL count
+- List of errors (if any)
+- List of warnings (if any)
+
+**Structure Preview:**
+- Total URLs
+- Categories count
+- Subcategories count
+- Unique domains
+- Category distribution graph
+
+**URL Sources:**
+The load generator checks three locations in order:
+1. `/app/data/urls.txt` - Custom URLs (uploaded via UI)
+2. `/config/urls.txt` - Mounted from host
+3. Embedded `config/urls.txt` - Default URLs baked into container
+
+**Note:** After uploading custom URLs or resetting to defaults, you must restart the container for changes to take effect.
 
 ---
 
@@ -436,6 +487,93 @@ Test Matomo server connectivity.
 }
 ```
 
+#### GET /api/urls
+Get current URL list and validation results.
+
+**Rate Limit:** 20 requests/minute
+
+**Response:**
+```json
+{
+  "content": "https://example.com/page1\nhttps://example.com/page2",
+  "source": "custom",
+  "validation": {
+    "valid": true,
+    "url_count": 2,
+    "errors": [],
+    "warnings": ["Only 2 URLs found. Recommend at least 100."]
+  },
+  "structure": {
+    "total_urls": 2,
+    "unique_domains": 1,
+    "total_categories": 2,
+    "total_subcategories": 2,
+    "categories": {"page1": 1, "page2": 1},
+    "hierarchy": {...}
+  }
+}
+```
+
+#### POST /api/urls
+Upload custom URL list.
+
+**Rate Limit:** 10 requests/minute
+
+**Request Body:**
+```json
+{
+  "content": "https://example.com/page1\nhttps://example.com/page2"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully uploaded 2 URLs. Restart container to apply changes.",
+  "validation": {...},
+  "structure": {...},
+  "restart_required": true
+}
+```
+
+#### POST /api/urls/validate
+Validate URL list without saving.
+
+**Rate Limit:** 20 requests/minute
+
+**Request Body:**
+```json
+{
+  "content": "https://example.com/page1\nhttps://example.com/page2"
+}
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "url_count": 2,
+  "errors": [],
+  "warnings": ["Only 2 URLs found. Recommend at least 100."],
+  "structure": {...}
+}
+```
+
+#### DELETE /api/urls
+Reset URLs to defaults (embedded in container).
+
+**Rate Limit:** 10 requests/minute
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "URLs reset to defaults. Restart container to apply changes.",
+  "restart_required": true
+}
+```
+
 ### Rate Limits
 
 | Endpoint | Limit | Window |
@@ -447,6 +585,10 @@ Test Matomo server connectivity.
 | /api/restart | 10 | 1 minute |
 | /api/validate | 30 | 1 minute |
 | /api/test-connection | 20 | 1 minute |
+| /api/urls (GET) | 20 | 1 minute |
+| /api/urls (POST) | 10 | 1 minute |
+| /api/urls (DELETE) | 10 | 1 minute |
+| /api/urls/validate | 20 | 1 minute |
 
 **Rate Limit Headers:**
 ```

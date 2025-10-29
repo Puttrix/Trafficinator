@@ -64,6 +64,9 @@
                 <button data-tab="logs" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
                     Logs
                 </button>
+                <button data-tab="urls" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    URLs
+                </button>
             </div>
         </div>
     </nav>
@@ -641,6 +644,112 @@
                 </div>
             </div>
         </div>
+
+        <!-- URLs Tab -->
+        <div id="tab-urls" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">URL Management</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Manage the URLs used by the load generator. Changes require a container restart to take effect.
+                    </p>
+                </div>
+
+                <!-- Status Card -->
+                <div id="urls-status" class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">Current URLs</h3>
+                            <p class="mt-1 text-sm text-gray-600">
+                                <span id="urls-count">Loading...</span> URLs loaded
+                                <span class="mx-2">•</span>
+                                <span id="urls-source">source: checking...</span>
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-load-urls" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                            <button id="btn-download-urls" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Download
+                            </button>
+                            <button id="btn-reset-urls" class="btn-danger">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                URL Editor
+                                <span class="text-xs text-gray-500 ml-2">Format: URL [TAB] Optional Title</span>
+                            </label>
+                            <textarea
+                                id="urls-editor"
+                                rows="20"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary font-mono text-sm"
+                                placeholder="https://example.test/page-1&#10;https://example.test/page-2    Page 2 Title&#10;https://example.test/page-3    Page 3 Title"
+                            ></textarea>
+                            <p class="mt-1 text-xs text-gray-500">
+                                <span id="urls-line-count">0</span> lines
+                            </p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button id="btn-validate-urls" class="btn-secondary flex-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Validate URLs
+                            </button>
+                            <button id="btn-upload-file" class="btn-secondary flex-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Upload File
+                            </button>
+                            <input type="file" id="urls-file-input" accept=".txt" class="hidden">
+                            <button id="btn-save-urls" class="btn-primary flex-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                </svg>
+                                Save URLs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Results -->
+                <div id="urls-validation-results" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Validation Results</h3>
+                    <div id="urls-validation-content" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- URL Structure Preview -->
+                <div id="urls-structure-preview" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">URL Structure</h3>
+                    <div id="urls-structure-content" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -660,6 +769,7 @@
     <script src="/static/js/status.js"></script>
     <script src="/static/js/presets.js"></script>
     <script src="/static/js/logs.js"></script>
+    <script src="/static/js/urls.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

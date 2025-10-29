@@ -144,6 +144,24 @@ class API {
             })
         });
     }
+
+    // URL Management
+    async getUrls() {
+        return this.request('/api/urls');
+    }
+
+    async uploadUrls(content) {
+        return this.request('/api/urls', {
+            method: 'POST',
+            body: JSON.stringify({ content })
+        });
+    }
+
+    async resetUrls() {
+        return this.request('/api/urls', {
+            method: 'DELETE'
+        });
+    }
 }
 
 // Create global API instance

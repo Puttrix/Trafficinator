@@ -25,6 +25,7 @@ from models import (
     StopResponse,
     RestartResponse,
     LogsResponse,
+    URLContentRequest,
 )
 from config_validator import (
     ConfigValidator,
@@ -406,6 +407,213 @@ async def test_connection(
         raise HTTPException(
             status_code=500,
             detail=f"Error testing connection: {str(e)}"
+        )
+
+
+# =============================================================================
+# URL Management Endpoints
+# =============================================================================
+
+@app.get("/api/urls")
+@limiter.limit("20/minute")
+async def get_urls(
+    request: Request,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Get current URL list from the load generator container
+    
+    Returns:
+        Dict with urls content and metadata
+    """
+    try:
+        from url_validator import validate_urls, parse_url_structure
+        
+        # Try to read URLs from mounted volume or container
+        urls_path = Path("/app/data/urls.txt")
+        default_urls_path = Path("/config/urls.txt")
+        
+        # Check if custom URLs exist
+        if urls_path.exists():
+            content = urls_path.read_text()
+            source = "custom"
+        elif default_urls_path.exists():
+            content = default_urls_path.read_text()
+            source = "default"
+        else:
+            # Fallback: try to read from matomo-loadgen container
+            if docker_client.is_connected():
+                container = docker_client.get_container()
+                if container:
+                    try:
+                        exit_code, output = container.exec_run(
+                            "cat /config/urls.txt",
+                            demux=False
+                        )
+                        if exit_code == 0:
+                            content = output.decode('utf-8')
+                            source = "container"
+                        else:
+                            raise HTTPException(status_code=404, detail="URLs file not found")
+                    except Exception as e:
+                        raise HTTPException(status_code=500, detail=f"Error reading URLs from container: {str(e)}")
+                else:
+                    raise HTTPException(status_code=404, detail="Container not found")
+            else:
+                raise HTTPException(status_code=503, detail="Docker not connected")
+        
+        # Validate and parse
+        validation = validate_urls(content)
+        structure = parse_url_structure(validation['urls']) if validation['valid'] else {}
+        
+        return {
+            "content": content,
+            "source": source,
+            "validation": validation,
+            "structure": structure,
+            "line_count": len(content.split('\n')),
+            "editable": True  # URLs can always be uploaded/edited
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving URLs: {str(e)}"
+        )
+
+
+@app.post("/api/urls")
+@limiter.limit("10/minute")
+async def upload_urls(
+    request: Request,
+    body: URLContentRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Upload custom URL list
+    
+    Note: Requires container restart to take effect
+    
+    Args:
+        body: URLContentRequest with content field
+    
+    Returns:
+        Dict with validation results and save status
+    """
+    try:
+        from url_validator import validate_urls, parse_url_structure
+        
+        # Validate URLs
+        validation = validate_urls(body.content)
+        
+        if not validation['valid']:
+            return {
+                "success": False,
+                "message": "URL validation failed",
+                "validation": validation
+            }
+        
+        # Save to persistent location
+        urls_path = Path("/app/data/urls.txt")
+        urls_path.parent.mkdir(parents=True, exist_ok=True)
+        urls_path.write_text(body.content)
+        
+        structure = parse_url_structure(validation['urls'])
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded {validation['url_count']} URLs. Restart container to apply changes.",
+            "validation": validation,
+            "structure": structure,
+            "restart_required": True
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error uploading URLs: {str(e)}"
+        )
+
+
+@app.post("/api/urls/validate")
+@limiter.limit("20/minute")
+async def validate_urls_endpoint(
+    request: Request,
+    body: URLContentRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Validate URL list without saving
+    
+    Args:
+        body: URLContentRequest with content field
+    
+    Returns:
+        Dict with validation results and URL structure
+    """
+    try:
+        from url_validator import validate_urls, parse_url_structure
+        
+        # Validate URLs
+        validation = validate_urls(body.content)
+        
+        # Get structure if valid
+        structure = None
+        if validation['valid']:
+            structure = parse_url_structure(validation['urls'])
+        
+        return {
+            "valid": validation['valid'],
+            "url_count": validation['url_count'],
+            "errors": validation['errors'],
+            "warnings": validation['warnings'],
+            "structure": structure
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error validating URLs: {str(e)}"
+        )
+
+
+@app.delete("/api/urls")
+@limiter.limit("10/minute")
+async def reset_urls(
+    request: Request,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Reset URLs to default (embedded in image)
+    
+    Note: Requires container restart to take effect
+    
+    Returns:
+        Dict with reset status
+    """
+    try:
+        # Remove custom URLs file
+        urls_path = Path("/app/data/urls.txt")
+        if urls_path.exists():
+            urls_path.unlink()
+            return {
+                "success": True,
+                "message": "URLs reset to defaults. Restart container to apply changes.",
+                "restart_required": True
+            }
+        else:
+            return {
+                "success": True,
+                "message": "Already using default URLs",
+                "restart_required": False
+            }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error resetting URLs: {str(e)}"
         )
 
 
