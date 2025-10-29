@@ -25,6 +25,7 @@ from models import (
     StopResponse,
     RestartResponse,
     LogsResponse,
+    ApplyConfigResponse,
     URLContentRequest,
 )
 from config_validator import (
@@ -407,6 +408,62 @@ async def test_connection(
         raise HTTPException(
             status_code=500,
             detail=f"Error testing connection: {str(e)}"
+        )
+
+
+@app.post("/api/config/apply", response_model=ApplyConfigResponse)
+@limiter.limit("10/minute")
+async def apply_config(
+    request: Request,
+    config: Dict[str, Any] = Body(..., embed=True),
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Apply new configuration to the load generator container
+    
+    This validates the configuration, updates the container's environment variables,
+    and restarts the container to apply the changes.
+    
+    Args:
+        config: Configuration dictionary to apply
+    
+    Returns:
+        ApplyConfigResponse: Result of applying the configuration
+    
+    Raises:
+        HTTPException: If validation fails or Docker operation fails
+    """
+    if not docker_client.is_connected():
+        raise HTTPException(
+            status_code=503,
+            detail="Docker daemon not connected"
+        )
+    
+    try:
+        # First validate the configuration
+        validation_result = ConfigValidator.validate_config(config)
+        
+        if not validation_result.valid:
+            error_messages = [f"{err.field}: {err.message}" for err in validation_result.errors]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Configuration validation failed: {'; '.join(error_messages)}"
+            )
+        
+        # Convert config dict to environment variables
+        env_vars = container_manager.config_to_env_vars(config)
+        
+        # Update container with new environment variables
+        result = container_manager.update_and_restart(env_vars)
+        
+        return ApplyConfigResponse(**result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error applying configuration: {str(e)}"
         )
 
 

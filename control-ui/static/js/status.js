@@ -74,7 +74,7 @@ class StatusDashboard {
         
         if (!indicator || !statusText || !statusSubtitle) return;
 
-        const containerStatus = status.status || 'unknown';
+        const containerStatus = status.container?.state || status.status || 'unknown';
         
         // Clear existing classes
         indicator.className = 'flex items-center justify-center w-16 h-16 rounded-full';
@@ -151,7 +151,7 @@ class StatusDashboard {
         
         if (!startBtn || !stopBtn || !restartBtn) return;
 
-        const containerStatus = status.status || 'unknown';
+        const containerStatus = status.container?.state || status.status || 'unknown';
         
         // Show/hide buttons based on status
         if (containerStatus === 'running') {
@@ -179,10 +179,16 @@ class StatusDashboard {
         const uptimeEl = document.getElementById('metric-uptime');
         const uptimeDetailEl = document.getElementById('metric-uptime-detail');
         if (uptimeEl && uptimeDetailEl) {
-            if (status.uptime_seconds && status.uptime_seconds > 0) {
-                uptimeEl.textContent = UI.formatDuration(status.uptime_seconds);
-                const startTime = new Date(Date.now() - (status.uptime_seconds * 1000));
-                uptimeDetailEl.textContent = `Started ${UI.formatTimestamp(startTime)}`;
+            const uptime = status.stats?.uptime || status.container?.uptime;
+            const startedAt = status.container?.started_at;
+            
+            if (uptime) {
+                uptimeEl.textContent = uptime;
+                if (startedAt) {
+                    uptimeDetailEl.textContent = `Started ${UI.formatTimestamp(new Date(startedAt))}`;
+                } else {
+                    uptimeDetailEl.textContent = 'Running';
+                }
             } else {
                 uptimeEl.textContent = '--';
                 uptimeDetailEl.textContent = 'Container not running';

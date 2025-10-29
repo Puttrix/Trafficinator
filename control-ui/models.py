@@ -101,6 +101,15 @@ class LogsResponse(BaseModel):
     container_state: str = Field(..., description="Current container state")
 
 
+class ApplyConfigResponse(BaseModel):
+    """Response for POST /api/config/apply"""
+    success: bool
+    message: str
+    container_restarted: bool
+    state: str
+    error: Optional[str] = None
+
+
 class URLContentRequest(BaseModel):
     """Request for URL validation/upload"""
     content: str = Field(..., description="URL file content (one URL per line)")

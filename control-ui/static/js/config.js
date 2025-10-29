@@ -429,15 +429,44 @@ class ConfigForm {
             return;
         }
         
-        // Get configuration
-        const config = this.getFormData();
+        // Confirm with user
+        const confirmed = confirm(
+            'This will apply the new configuration and restart the container.\n\n' +
+            'Any running load generation will be interrupted.\n\n' +
+            'Continue?'
+        );
         
-        // For now, just show success message
-        // P-018 will implement actual persistence
-        UI.showAlert('Configuration validated successfully. Start the container to apply.', 'info');
-        console.log('Configuration:', config);
+        if (!confirmed) {
+            return;
+        }
         
-        // TODO: Implement save to backend when P-018 is complete
+        try {
+            // Get configuration
+            const config = this.getFormData();
+            
+            UI.showLoading('Applying configuration...');
+            
+            // Apply configuration to container
+            const result = await api.applyConfig(config);
+            
+            UI.hideLoading();
+            
+            if (result.success) {
+                UI.showAlert(result.message, 'success');
+                
+                // Reload the page to refresh status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                UI.showAlert(`Failed to apply configuration: ${result.error || result.message}`, 'error');
+            }
+            
+        } catch (error) {
+            UI.hideLoading();
+            UI.showAlert(`Error applying configuration: ${error.message}`, 'error');
+            console.error('Apply config error:', error);
+        }
     }
 }
 

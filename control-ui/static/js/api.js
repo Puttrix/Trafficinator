@@ -134,6 +134,14 @@ class API {
         });
     }
 
+    // Apply configuration to container
+    async applyConfig(config) {
+        return this.request('/api/config/apply', {
+            method: 'POST',
+            body: JSON.stringify({ config })
+        });
+    }
+
     // Test Matomo connection
     async testConnection(url, siteId) {
         return this.request('/api/test-connection', {
