@@ -34,10 +34,154 @@
       accepts: Define and implement user journey templates (researcher, buyer, casual browser)
 
 ## Features - Mid/Long Term
-- [ ] **P-007** Evaluate Control UI/API feasibility
-      tags: feature, webui, parked  priority: low  est: 16h
+- [x] **P-007** Evaluate Control UI/API feasibility
+      tags: feature, webui, parked  priority: low  est: 16h  **COMPLETED: 2025-10-29**
       deps: none
       accepts: Technical feasibility study with pros/cons; see .codex/webui-parked.md
+      result: Comprehensive feasibility study completed → Decision: Build Full Web UI (Option 1)
+      doc: .assistant/P-007-feasibility-study.md
+
+## Web UI Implementation (P-015 to P-025)
+
+### Phase 1: Backend Foundation
+- [ ] **P-015** Setup FastAPI control service with Docker integration
+      tags: webui, backend, api  priority: high  est: 6h
+      deps: P-007
+      accepts: 
+      - FastAPI service running on port 8000
+      - Docker SDK integrated for container control
+      - Basic health check endpoint (GET /health)
+      - Docker Compose service definition for control_ui
+      - Service can start/stop/query matomo-loadgen container
+
+- [ ] **P-016** Implement core REST API endpoints
+      tags: webui, backend, api  priority: high  est: 8h
+      deps: P-015
+      accepts:
+      - GET /api/status - Returns container state, config, runtime stats
+      - POST /api/start - Start load generator with config JSON
+      - POST /api/stop - Stop load generator gracefully
+      - POST /api/restart - Restart with new config
+      - GET /api/logs?lines=N&filter=text - Fetch container logs
+      - All endpoints return proper HTTP status codes and error messages
+
+- [ ] **P-017** Add configuration validation and Matomo connectivity testing
+      tags: webui, backend, validation  priority: high  est: 4h
+      deps: P-016
+      accepts:
+      - POST /api/validate - Validates config JSON against schema
+      - POST /api/test-connection - Tests Matomo URL connectivity
+      - Validates MATOMO_TOKEN_AUTH when RANDOMIZE_VISITOR_COUNTRIES=true
+      - Returns detailed validation errors with helpful messages
+      - Integration with P-004 validation logic
+
+- [ ] **P-018** Implement configuration persistence
+      tags: webui, backend, database  priority: medium  est: 4h
+      deps: P-016
+      accepts:
+      - SQLite database for storing configurations
+      - GET /api/configs - List saved configurations
+      - POST /api/configs - Save new configuration
+      - PUT /api/configs/:id - Update configuration
+      - DELETE /api/configs/:id - Delete configuration
+      - GET /api/configs/:id - Load specific configuration
+
+- [ ] **P-019** Add authentication and security layer
+      tags: webui, backend, security  priority: high  est: 6h
+      deps: P-016
+      accepts:
+      - Simple API key authentication (configurable via env var)
+      - CORS configuration for frontend
+      - Rate limiting on API endpoints
+      - Input sanitization and validation
+      - Secure handling of MATOMO_TOKEN_AUTH (no exposure in logs)
+      - Security documentation in README
+
+### Phase 2: Frontend Implementation
+- [ ] **P-020** Create frontend foundation and layout
+      tags: webui, frontend  priority: high  est: 6h
+      deps: P-016
+      accepts:
+      - HTML/CSS structure with responsive design
+      - Tailwind CSS integrated
+      - Navigation layout: Config, Status, Logs, Presets tabs
+      - Loading states and error handling UI components
+      - Served from FastAPI static files endpoint
+
+- [ ] **P-021** Build configuration form with validation
+      tags: webui, frontend, forms  priority: high  est: 8h
+      deps: P-017, P-020
+      accepts:
+      - Form fields for all environment variables
+      - Real-time client-side validation
+      - Grouped fields: Core, Traffic, Features, Advanced
+      - Conditional field display (e.g., show token_auth when country randomization enabled)
+      - Help text/tooltips for each field
+      - Save/Load configuration buttons
+      - Test Connection button with visual feedback
+
+- [ ] **P-022** Implement load presets (Light/Medium/Heavy)
+      tags: webui, frontend, presets  priority: medium  est: 4h
+      deps: P-021
+      accepts:
+      - Preset selector dropdown: Light (1k/day), Medium (10k/day), Heavy (50k+/day)
+      - One-click preset loading into form
+      - Visual indication of active preset
+      - Custom preset creation and saving
+      - Integrates with P-005 preset definitions
+
+- [ ] **P-023** Build status dashboard and control panel
+      tags: webui, frontend, dashboard  priority: high  est: 6h
+      deps: P-016, P-020
+      accepts:
+      - Real-time status display (running/stopped/error)
+      - Start/Stop/Restart buttons with confirmation
+      - Current configuration display
+      - Runtime metrics: uptime, total visits generated, rate
+      - Daily cap status and window reset countdown
+      - Auto-refresh every 5 seconds
+      - Visual indicators (colors, icons) for states
+
+- [ ] **P-024** Implement log viewer with filtering
+      tags: webui, frontend, logs  priority: medium  est: 4h
+      deps: P-016, P-020
+      accepts:
+      - Display last N lines (configurable: 50/100/500/1000)
+      - Real-time log streaming (poll every 2 seconds when running)
+      - Filter by log level (INFO/WARNING/ERROR)
+      - Search/filter by text
+      - Auto-scroll to bottom option
+      - Copy logs to clipboard button
+      - Clear display button
+
+### Phase 3: Polish & Documentation
+- [ ] **P-025** Testing, documentation, and deployment
+      tags: webui, testing, documentation  priority: high  est: 8h
+      deps: P-019, P-021, P-023, P-024
+      accepts:
+      - Integration tests for API endpoints
+      - Browser compatibility testing (Chrome, Firefox, Safari, Edge)
+      - OpenAPI/Swagger documentation for REST API
+      - User guide: Installation, configuration, usage
+      - Screenshots/GIFs for README
+      - docker-compose.webui.yml for easy deployment
+      - Security best practices documentation
+      - ADR-008 documenting decision to build UI
+
+### Phase 4: Nice-to-Haves (Optional)
+- [ ] **P-026** Advanced features and enhancements
+      tags: webui, enhancement  priority: low  est: 12h
+      deps: P-025
+      accepts:
+      - WebSocket support for real-time log streaming
+      - Metrics graphs (visits over time, success rate)
+      - Multi-target orchestration UI
+      - Export/import configurations
+      - Dark mode toggle
+      - Keyboard shortcuts
+      - User preferences persistence
+
+## Other Features
 
 - [ ] **P-008** Multi-target support (test multiple Matomo instances)
       tags: feature, scaling  priority: low  est: 8h

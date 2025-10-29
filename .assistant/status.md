@@ -1,39 +1,46 @@
 # Status
 
-**Last Updated:** 2025-10-29 (Migration to `.assistant/` workflow)
+**Last Updated:** 2025-10-29 (Decision to build Web UI)
 
 ---
 
 ## Focus
-Documentation alignment and test coverage improvements. Project in maintenance mode with occasional enhancements.
+🚀 **Web UI Development** - Building FastAPI control service and web interface for easier configuration and monitoring.
+
+**Current Priority:** Phase 1 - Backend Foundation (P-015, P-016, P-017)
 
 ---
 
 ## Now / Next / Later
 See [plan.md](plan.md) for detailed roadmap.
 
-**Now:** Documentation updates (P-001, P-002), test coverage enhancement (P-003)  
-**Next:** Validation utilities (P-004), load presets (P-005), user journeys (P-006)  
-**Later:** Advanced features (control UI, multi-target, k8s, plugins)
+**Now:** Backend foundation (P-015, P-016, P-017), validation utilities (P-004), presets (P-005)  
+**Next:** Backend completion (P-018, P-019), frontend core (P-020, P-021, P-023, P-024), integration (P-022, P-025)  
+**Later:** UI enhancements (P-026), documentation updates, advanced generator features
 
 ---
 
 ## Risks
 
 ### Technical
-- **Token-bucket rate limiting:** May not handle burst scenarios optimally
-- **Single-container scaling:** Limited to ~50k visits/day without distributed mode
-- **Geolocation dependency:** Requires `MATOMO_TOKEN_AUTH` which may expire or be revoked
+- **Web UI Complexity:** Adding web service increases attack surface and maintenance burden
+- **State Synchronization:** Keeping UI state in sync with container state
+- **Browser Compatibility:** Must test across multiple browsers
+- **Security:** Auth, CORS, input validation, API abuse prevention
+- **Token-bucket rate limiting:** May not handle burst scenarios optimally (existing)
+- **Single-container scaling:** Limited to ~50k visits/day without distributed mode (existing)
 
 ### Product
-- **Feature creep:** Balancing realism vs. configurability complexity
-- **Maintenance burden:** Single maintainer with limited capacity
-- **Community engagement:** Unclear user needs without active feedback channel
+- **Feature Creep:** UI may attract more feature requests, expanding scope
+- **Maintenance Burden:** Single maintainer now responsible for backend + frontend + generator
+- **User Expectations:** UI users may expect more polish and features
+- **Documentation Load:** Need comprehensive UI docs in addition to existing docs
 
 ### Operational
-- **Documentation drift:** CLAUDE.md contains outdated references (P-001, P-002)
-- **Test coverage gaps:** Complex behaviors (events, ecommerce, daily cap) under-tested
-- **Deployment complexity:** Multiple compose files may confuse new users
+- **Deployment Complexity:** Two services (generator + control UI) vs. one
+- **Testing Complexity:** Integration testing between UI and generator
+- **Support Load:** More questions about UI configuration, browser issues
+- **Version Compatibility:** UI and generator versions must stay in sync
 
 ---
 
@@ -64,6 +71,23 @@ See [plan.md](plan.md) for detailed roadmap.
 ---
 
 ## Changelog
+
+### 2025-10-29 — DECISION: Build Full Web UI (Reversal of ADR-007)
+- **Major decision:** Proceeding with Full Web UI (Option 1 from P-007 feasibility study)
+- Created 12 new backlog items (P-015 to P-026) for implementation
+- Organized into 4 phases: Backend Foundation, Frontend Implementation, Polish & Documentation, Nice-to-Haves
+- Total estimated effort: 56h core + 12h optional enhancements
+- Risks identified and documented (security, complexity, maintenance)
+- Plan updated to prioritize Web UI development
+- **Rationale:** Despite feasibility study recommendation, user decided UI value outweighs maintenance cost
+- **Next:** Start with P-015 (FastAPI service setup)
+
+### 2025-10-29 — P-007 Feasibility Study Complete
+- Evaluated Control UI/API feasibility (4 options analyzed)
+- **Recommendation:** Maintain status quo with improvements (validation + presets)
+- Decision: Do not build UI unless strong community demand emerges (5+ issues, 100+ stars)
+- Triggers identified for reconsidering: community growth, external maintainer, user surveys
+- Next: Focus on P-004 (validation) and P-005 (presets) instead
 
 ### 2025-10-29 — Migration to `.assistant/` Workflow
 - Populated `.assistant/canvas/` with vision, goals, stakeholders, questions, ideas, notes

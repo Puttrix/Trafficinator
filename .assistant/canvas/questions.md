@@ -4,8 +4,11 @@ Track assumptions and unknowns. When answered, move to history or link ADR.
 
 ## Architecture & Design
 - **Q1:** Should we add a control API, or keep it pure configuration-driven?
-  - Current: Parked web UI, config via environment variables only
-  - Tradeoff: Simplicity vs. ease of use
+  - **STATUS: ANSWERED (2025-10-29)** - Feasibility study complete (P-007)
+  - **Decision:** Maintain configuration-driven approach (Status Quo+)
+  - **Recommendation:** Add validation script + presets instead of UI/API
+  - **Reconsider if:** ≥5 GitHub issues requesting it, ≥100 stars, external maintainer volunteers
+  - **See:** `.assistant/P-007-feasibility-study.md`, ADR-007
 
 - **Q2:** Is the current token-bucket rate limiting optimal for all scenarios?
   - Current: Works well for steady traffic, may need burst mode
