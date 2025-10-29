@@ -4,10 +4,12 @@ Trafficinator Control UI - FastAPI Application
 Main application entry point for the web-based control interface.
 """
 import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -105,6 +107,15 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+# Mount static files for web UI
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    print(f"📁 Static files mounted from: {STATIC_DIR}")
+else:
+    print(f"⚠️  Warning: Static directory not found: {STATIC_DIR}")
+
+
 @app.get("/health")
 @limiter.limit("30/minute")
 async def health_check(request: Request):
@@ -130,10 +141,11 @@ async def health_check(request: Request):
 @app.get("/")
 async def root():
     """
-    Root endpoint - API information
+    Serve the web UI or API information based on Accept header
     
     Returns:
-        dict: API information and available endpoints
+        FileResponse: Web UI HTML page for browsers
+        dict: API information for API clients
     """
     return {
         "name": "Trafficinator Control UI API",
@@ -141,16 +153,21 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "health": "/health",
-        "endpoints": {
-            "status": "GET /api/status",
-            "start": "POST /api/start",
-            "stop": "POST /api/stop",
-            "restart": "POST /api/restart",
-            "logs": "GET /api/logs",
-            "validate": "POST /api/validate",
-            "test_connection": "POST /api/test-connection",
-        },
     }
+
+
+@app.get("/ui")
+async def serve_ui():
+    """
+    Serve the web UI
+    
+    Returns:
+        FileResponse: Web UI HTML page
+    """
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="Web UI not found")
+    return FileResponse(index_path)
 
 
 # ============================================================================
