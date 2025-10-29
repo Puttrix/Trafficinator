@@ -191,6 +191,54 @@
       - Keyboard shortcuts
       - User preferences persistence
 
+- [ ] **P-027** URL management in Web UI
+      tags: webui, config, urls  priority: medium  est: 6h
+      deps: P-025
+      accepts:
+      - View current URL list (embedded in image)
+      - Upload custom urls.txt file via UI
+      - Edit URLs in textarea with syntax highlighting
+      - Validate URL format (http/https, valid structure)
+      - Preview URL structure (categories, subcategories, pages)
+      - Download current URL list
+      - Reset to default URLs
+      - Apply URL changes (requires container restart)
+      - API endpoints: GET /api/urls, POST /api/urls, DELETE /api/urls
+
+- [ ] **P-028** Custom event configuration in Web UI
+      tags: webui, config, events  priority: medium  est: 8h
+      deps: P-025
+      accepts:
+      - View current event definitions (click events, random events)
+      - Configure custom click events (category, action, name, value)
+      - Configure custom random events (behavioral, system, engagement)
+      - Edit event probabilities per event type
+      - JSON editor with validation for event structure
+      - Preview event distribution (how often each fires)
+      - Upload/download event configuration files
+      - Reset to default event definitions
+      - Test mode: Generate sample events to verify configuration
+      - Apply event changes (requires container restart)
+      - API endpoints: GET /api/events, POST /api/events, PUT /api/events/:id, DELETE /api/events/:id
+
+- [ ] **P-029** Conversion funnel / user journey sequences
+      tags: webui, config, funnels, journeys  priority: high  est: 10h
+      deps: P-027, P-028
+      accepts:
+      - Define sequential user journeys (URL → event → URL → event)
+      - Visual funnel builder in UI (drag-and-drop steps)
+      - Step types: pageview, event, site_search, outlink, download, ecommerce_action
+      - Configure timing between steps (min/max delays)
+      - Set funnel execution probability (% of visits that follow funnel)
+      - Multiple funnels with different priorities/probabilities
+      - Funnel templates: "E-commerce Purchase", "Lead Generation", "Content Consumption", "Support Journey"
+      - Test mode: Execute single funnel instance to verify
+      - Statistics: Track funnel completion rates, drop-off points
+      - Export/import funnel definitions (JSON)
+      - Backend: New visitor behavior mode that executes funnel steps instead of random navigation
+      - Mix random and funnel traffic (e.g., 30% follow funnels, 70% random browsing)
+      - API endpoints: GET /api/funnels, POST /api/funnels, PUT /api/funnels/:id, DELETE /api/funnels/:id
+
 ## Other Features
 
 - [ ] **P-008** Multi-target support (test multiple Matomo instances)
