@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Main load generator (existing)
+  matomo-loadgen:
+    build: ./matomo-load-baked
+    container_name: matomo-loadgen
+    environment:
+      MATOMO_URL: "${MATOMO_URL:-https://matomo.example.com/matomo.php}"
+      MATOMO_SITE_ID: "${MATOMO_SITE_ID:-1}"
+      MATOMO_TOKEN_AUTH: "${MATOMO_TOKEN_AUTH:-}"
+      TARGET_VISITS_PER_DAY: "${TARGET_VISITS_PER_DAY:-20000}"
+      PAGEVIEWS_MIN: "${PAGEVIEWS_MIN:-3}"
+      PAGEVIEWS_MAX: "${PAGEVIEWS_MAX:-6}"
+      CONCURRENCY: "${CONCURRENCY:-50}"
+      PAUSE_BETWEEN_PVS_MIN: "${PAUSE_BETWEEN_PVS_MIN:-0.5}"
+      PAUSE_BETWEEN_PVS_MAX: "${PAUSE_BETWEEN_PVS_MAX:-2.0}"
+      AUTO_STOP_AFTER_HOURS: "${AUTO_STOP_AFTER_HOURS:-0}"
+      MAX_TOTAL_VISITS: "${MAX_TOTAL_VISITS:-0}"
+      SITESEARCH_PROBABILITY: "${SITESEARCH_PROBABILITY:-0.15}"
+      VISIT_DURATION_MIN: "${VISIT_DURATION_MIN:-1.0}"
+      VISIT_DURATION_MAX: "${VISIT_DURATION_MAX:-8.0}"
+      OUTLINKS_PROBABILITY: "${OUTLINKS_PROBABILITY:-0.10}"
+      DOWNLOADS_PROBABILITY: "${DOWNLOADS_PROBABILITY:-0.08}"
+      CLICK_EVENTS_PROBABILITY: "${CLICK_EVENTS_PROBABILITY:-0.25}"
+      RANDOM_EVENTS_PROBABILITY: "${RANDOM_EVENTS_PROBABILITY:-0.12}"
+      DIRECT_TRAFFIC_PROBABILITY: "${DIRECT_TRAFFIC_PROBABILITY:-0.30}"
+      RANDOMIZE_VISITOR_COUNTRIES: "${RANDOMIZE_VISITOR_COUNTRIES:-true}"
+      ECOMMERCE_PROBABILITY: "${ECOMMERCE_PROBABILITY:-0.05}"
+      ECOMMERCE_ORDER_VALUE_MIN: "${ECOMMERCE_ORDER_VALUE_MIN:-15.99}"
+      ECOMMERCE_ORDER_VALUE_MAX: "${ECOMMERCE_ORDER_VALUE_MAX:-299.99}"
+      ECOMMERCE_CURRENCY: "${ECOMMERCE_CURRENCY:-USD}"
+      TIMEZONE: "${TIMEZONE:-UTC}"
+    restart: unless-stopped
+    networks:
+      - trafficinator
+
+  # Control UI (new)
+  control-ui:
+    build: ./control-ui
+    container_name: trafficinator-control-ui
+    ports:
+      - "${CONTROL_UI_PORT:-8000}:8000"
+    environment:
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+      CONTROL_UI_API_KEY: "${CONTROL_UI_API_KEY:-change-me-in-production}"
+    volumes:
+      # Mount Docker socket to control containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount data directory for SQLite database
+      - ./control-ui/data:/app/data
+    restart: unless-stopped
+    networks:
+      - trafficinator
+    depends_on:
+      - matomo-loadgen
+
+networks:
+  trafficinator:
+    driver: bridge
