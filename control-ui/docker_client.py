@@ -26,12 +26,12 @@ class DockerClient:
             DockerException: If connection fails
         """
         try:
+            # Connect via Unix socket
             self.client = docker.from_env()
             # Test connection
             self.client.ping()
             self._connected = True
-        except DockerException as e:
-            self._connected = False
+        except Exception as e:
             raise DockerException(f"Failed to connect to Docker daemon: {e}")
     
     def disconnect(self):

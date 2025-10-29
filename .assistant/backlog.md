@@ -55,16 +55,17 @@
       - Service can start/stop/query matomo-loadgen container ✅
       result: Complete FastAPI service with Docker integration, docker-compose.webui.yml, README, test script
 
-- [ ] **P-016** Implement core REST API endpoints
-      tags: webui, backend, api  priority: high  est: 8h
+- [x] **P-016** Implement core REST API endpoints
+      tags: webui, backend, api  priority: high  est: 8h  completed: 2025-10-29
       deps: P-015
       accepts:
-      - GET /api/status - Returns container state, config, runtime stats
-      - POST /api/start - Start load generator with config JSON
-      - POST /api/stop - Stop load generator gracefully
-      - POST /api/restart - Restart with new config
-      - GET /api/logs?lines=N&filter=text - Fetch container logs
-      - All endpoints return proper HTTP status codes and error messages
+      - GET /api/status - Returns container state, config, runtime stats ✅
+      - POST /api/start - Start load generator with config JSON ✅
+      - POST /api/stop - Stop load generator gracefully ✅
+      - POST /api/restart - Restart with new config ✅
+      - GET /api/logs?lines=N&filter=text - Fetch container logs ✅
+      - All endpoints return proper HTTP status codes and error messages ✅
+      result: Implemented all 5 REST API endpoints with Pydantic models, container_manager business logic layer, fixed Docker SDK urllib3 compatibility issue (requests<2.29.0), all endpoints tested and working
 
 - [ ] **P-017** Add configuration validation and Matomo connectivity testing
       tags: webui, backend, validation  priority: high  est: 4h

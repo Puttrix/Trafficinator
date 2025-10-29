@@ -3,7 +3,9 @@ version: '3.8'
 services:
   # Main load generator (existing)
   matomo-loadgen:
-    build: ./matomo-load-baked
+    build:
+      context: .
+      dockerfile: matomo-load-baked/Dockerfile
     container_name: matomo-loadgen
     environment:
       MATOMO_URL: "${MATOMO_URL:-https://matomo.example.com/matomo.php}"
@@ -37,13 +39,16 @@ services:
 
   # Control UI (new)
   control-ui:
-    build: ./control-ui
+    build:
+      context: .
+      dockerfile: control-ui/Dockerfile
     container_name: trafficinator-control-ui
     ports:
       - "${CONTROL_UI_PORT:-8000}:8000"
     environment:
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
       CONTROL_UI_API_KEY: "${CONTROL_UI_API_KEY:-change-me-in-production}"
+      DOCKER_HOST: "unix:///var/run/docker.sock"
     volumes:
       # Mount Docker socket to control containers
       - /var/run/docker.sock:/var/run/docker.sock
