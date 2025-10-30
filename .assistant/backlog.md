@@ -1,15 +1,17 @@
 # Backlog
 
 ## Documentation & Alignment
-- [ ] **P-001** Update CLAUDE.md to reference correct docker-compose files
-      tags: documentation, maintenance  priority: medium  est: 1h
+- [x] **P-001** Update assistant documentation to reference correct docker-compose files
+      tags: documentation, maintenance  priority: medium  est: 1h  completed: 2025-10-30
       deps: none
-      accepts: CLAUDE.md references docker-compose.yml and docker-compose.prod.yml instead of docker-compose.loadgen.yml; notes URLs are embedded in image
+      accepts: Assistant guide references docker-compose.yml and docker-compose.prod.yml instead of docker-compose.loadgen.yml; notes URLs are embedded in image
+      result: Replaced legacy CLAUDE.md with `.assistant/ai_guidance.md` covering current compose files (dev/prod/webui) and deployment notes.
 
-- [ ] **P-002** Update CLAUDE.md to reflect embedded URLs vs config/urls.txt
-      tags: documentation, maintenance  priority: medium  est: 0.5h
+- [x] **P-002** Document embedded URLs in assistant guidance
+      tags: documentation, maintenance  priority: medium  est: 0.5h  completed: 2025-10-30
       deps: P-001
       accepts: Documentation clearly states URLs are built into Docker image
+      result: `.assistant/ai_guidance.md` explains that `urls.txt` ships inside the image and custom URLs are managed through the Control UI.
 
 ## Testing & Quality
 - [ ] **P-003** Enhance test coverage for complex behaviors

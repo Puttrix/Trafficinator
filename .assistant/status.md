@@ -30,6 +30,7 @@
 - `control-ui/models.py` — Pydantic models shared across API.
 - `control-ui/static/js/app.js` — Frontend controller orchestrating API calls.
 - `docker-compose.webui.yml` — Compose stack for control UI + generator.
+- `.assistant/ai_guidance.md` — Current AI-assistant quickstart (replaces legacy CLAUDE.md).
 
 ---
 
