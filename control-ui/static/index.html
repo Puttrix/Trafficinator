@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matomo Load Generator - Control UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .tab-active {
+            border-bottom-color: #3B82F6;
+            color: #3B82F6;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Matomo Load Generator</h1>
+                    <p class="text-sm text-gray-500 mt-1">Control Panel</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div id="connection-status" class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <span class="text-sm text-gray-600">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8 overflow-x-auto">
+                <button data-tab="status" class="tab-button tab-active px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Status & Control
+                </button>
+                <button data-tab="config" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Configuration
+                </button>
+                <button data-tab="presets" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Load Presets
+                </button>
+                <button data-tab="logs" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Logs
+                </button>
+                <button data-tab="urls" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    URLs
+                </button>
+                <button data-tab="events" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Events
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Loading State -->
+        <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 flex items-center gap-4">
+                <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-lg text-gray-700" id="loading-text">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alert-container" class="mb-6"></div>
+
+        <!-- Tab Content: Status -->
+        <div id="tab-status" class="tab-content">
+            <!-- Status Header Card -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div id="status-indicator" class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900" id="status-text">Unknown</h2>
+                                <p class="text-sm text-gray-500 mt-1" id="status-subtitle">Loading status...</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="start-btn" class="px-6 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed hidden">
+                                <svg class="w-5 h-5 inline-block mr-2 -mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                                </svg>
+                                Start
+                            </button>
+                            <button id="stop-btn" class="px-6 py-3 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed hidden">
+                                <svg class="w-5 h-5 inline-block mr-2 -mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"></path>
+                                </svg>
+                                Stop
+                            </button>
+                            <button id="restart-btn" class="px-6 py-3 text-sm font-medium text-primary bg-blue-50 border border-primary rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed hidden">
+                                <svg class="w-5 h-5 inline-block mr-2 -mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+                                </svg>
+                                Restart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <!-- Uptime Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Uptime</p>
+                            <p class="text-2xl font-bold text-gray-900 mt-2" id="metric-uptime">--</p>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded-lg">
+                            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" id="metric-uptime-detail">Container runtime</p>
+                </div>
+
+                <!-- Total Visits Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Visits</p>
+                            <p class="text-2xl font-bold text-gray-900 mt-2" id="metric-total-visits">--</p>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" id="metric-total-visits-detail">Since start</p>
+                </div>
+
+                <!-- Current Rate Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Current Rate</p>
+                            <p class="text-2xl font-bold text-gray-900 mt-2" id="metric-rate">--</p>
+                        </div>
+                        <div class="p-3 bg-purple-50 rounded-lg">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" id="metric-rate-detail">Visits per hour</p>
+                </div>
+
+                <!-- Target Progress Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Daily Target</p>
+                            <p class="text-2xl font-bold text-gray-900 mt-2" id="metric-target">--</p>
+                        </div>
+                        <div class="p-3 bg-orange-50 rounded-lg">
+                            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" id="metric-target-detail">Target: 0 /day</p>
+                </div>
+            </div>
+
+            <!-- Configuration Details -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Current Configuration</h3>
+                    <p class="text-sm text-gray-500 mt-1">Active container configuration</p>
+                </div>
+                <div class="p-6">
+                    <div id="config-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <p class="text-sm text-gray-500 col-span-full">No configuration loaded</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saved Presets Summary -->
+            <div class="bg-white rounded-lg shadow mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Saved Presets</h3>
+                            <p class="text-sm text-gray-500 mt-1">Recently saved configurations</p>
+                        </div>
+                        <button id="view-presets-btn" type="button" class="px-4 py-2 text-sm font-medium text-primary bg-blue-50 border border-primary rounded-lg hover:bg-blue-100">
+                            Manage Presets
+                        </button>
+                    </div>
+                </div>
+                <div id="status-saved-presets" class="p-6 space-y-3 text-sm text-gray-600">
+                    <p class="text-sm text-gray-500">No saved presets yet.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Config -->
+        <div id="tab-config" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">Configuration</h2>
+                            <p class="text-sm text-gray-500 mt-1">Configure load generator parameters</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="validate-config-btn" type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Validate
+                            </button>
+                            <button id="test-connection-btn" type="button" class="px-4 py-2 text-sm font-medium text-primary bg-blue-50 border border-primary rounded-lg hover:bg-blue-100">
+                                Test Connection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="config-form" class="p-6 space-y-8">
+                    <!-- Core Configuration -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Core Configuration</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label for="matomo_url" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Matomo URL <span class="text-red-500">*</span>
+                                </label>
+                                <input type="url" name="matomo_url" id="matomo_url" required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="https://matomo.example.com">
+                                <p class="text-xs text-gray-500 mt-1">Full URL to your Matomo tracking endpoint</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="matomo_site_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Site ID <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" name="matomo_site_id" id="matomo_site_id" required min="1"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="1">
+                                <p class="text-xs text-gray-500 mt-1">Matomo site ID to track</p>
+                            </div>
+
+                            <div class="form-group md:col-span-2">
+                                <label for="matomo_token_auth" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Token Auth (Optional)
+                                </label>
+                                <input type="password" name="matomo_token_auth" id="matomo_token_auth"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="••••••••••••••••">
+                                <p class="text-xs text-gray-500 mt-1">Required for geolocation and some advanced features</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Traffic Configuration -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Traffic Settings</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label for="target_visits_per_day" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Target Visits/Day
+                                </label>
+                                <input type="number" name="target_visits_per_day" id="target_visits_per_day" min="1" max="1000000" value="20000"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">1 - 1,000,000</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="concurrency" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Concurrency
+                                </label>
+                                <input type="number" name="concurrency" id="concurrency" min="1" max="500" value="50"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">1 - 500 concurrent visits</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="timezone" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Timezone
+                                </label>
+                                <input type="text" name="timezone" id="timezone" value="UTC"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="UTC">
+                                <p class="text-xs text-gray-500 mt-1">Timezone for timestamps</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Pageviews per Visit</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <input type="number" name="pageviews_min" id="pageviews_min" min="1" max="100" value="3"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                               placeholder="Min">
+                                        <p class="text-xs text-gray-500 mt-1">Min: 1</p>
+                                    </div>
+                                    <div>
+                                        <input type="number" name="pageviews_max" id="pageviews_max" min="1" max="100" value="6"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                               placeholder="Max">
+                                        <p class="text-xs text-gray-500 mt-1">Max: 100</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Visit Duration (minutes)</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <input type="number" name="visit_duration_min" id="visit_duration_min" min="0.1" max="120" step="0.1" value="1.0"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                               placeholder="Min">
+                                        <p class="text-xs text-gray-500 mt-1">Min: 0.1</p>
+                                    </div>
+                                    <div>
+                                        <input type="number" name="visit_duration_max" id="visit_duration_max" min="0.1" max="120" step="0.1" value="8.0"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                               placeholder="Max">
+                                        <p class="text-xs text-gray-500 mt-1">Max: 120</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pause Between Pageviews (seconds)</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <input type="number" name="pause_between_pvs_min" id="pause_between_pvs_min" min="0.1" max="60" step="0.1" value="0.5"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="Min">
+                                    <p class="text-xs text-gray-500 mt-1">Min: 0.1s</p>
+                                </div>
+                                <div>
+                                    <input type="number" name="pause_between_pvs_max" id="pause_between_pvs_max" min="0.1" max="60" step="0.1" value="2.0"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="Max">
+                                    <p class="text-xs text-gray-500 mt-1">Max: 60s</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Stop Configuration -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Auto-Stop Settings</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label for="auto_stop_after_hours" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Auto Stop After (hours)
+                                </label>
+                                <input type="number" name="auto_stop_after_hours" id="auto_stop_after_hours" min="0" max="168" step="0.1" value="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">0 = disabled, max 168 (1 week)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max_total_visits" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Max Total Visits
+                                </label>
+                                <input type="number" name="max_total_visits" id="max_total_visits" min="0" max="10000000" value="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">0 = disabled, max 10,000,000</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Probabilities -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Feature Probabilities</h3>
+                        <p class="text-sm text-gray-600 -mt-4">Probability of each feature occurring (0.0 - 1.0)</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label for="sitesearch_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Site Search
+                                </label>
+                                <input type="number" name="sitesearch_probability" id="sitesearch_probability" min="0" max="1" step="0.01" value="0.15"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.15 (15%)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="outlinks_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Outlinks
+                                </label>
+                                <input type="number" name="outlinks_probability" id="outlinks_probability" min="0" max="1" step="0.01" value="0.10"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.10 (10%)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="downloads_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Downloads
+                                </label>
+                                <input type="number" name="downloads_probability" id="downloads_probability" min="0" max="1" step="0.01" value="0.08"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.08 (8%)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="click_events_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Click Events
+                                </label>
+                                <input type="number" name="click_events_probability" id="click_events_probability" min="0" max="1" step="0.01" value="0.25"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.25 (25%)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="random_events_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Random Events
+                                </label>
+                                <input type="number" name="random_events_probability" id="random_events_probability" min="0" max="1" step="0.01" value="0.12"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.12 (12%)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="direct_traffic_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Direct Traffic
+                                </label>
+                                <input type="number" name="direct_traffic_probability" id="direct_traffic_probability" min="0" max="1" step="0.01" value="0.30"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.30 (30%)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ecommerce_probability" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Ecommerce Orders
+                                </label>
+                                <input type="number" name="ecommerce_probability" id="ecommerce_probability" min="0" max="1" step="0.01" value="0.05" data-toggle-group="ecommerce"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Default: 0.05 (5%)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ecommerce Configuration (conditional) -->
+                    <div data-toggle-target="ecommerce" class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Ecommerce Settings</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label for="ecommerce_order_value_min" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Min Order Value
+                                </label>
+                                <input type="number" name="ecommerce_order_value_min" id="ecommerce_order_value_min" min="0.01" step="0.01" value="15.99"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Minimum: 0.01</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ecommerce_order_value_max" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Max Order Value
+                                </label>
+                                <input type="number" name="ecommerce_order_value_max" id="ecommerce_order_value_max" min="0.01" step="0.01" value="299.99"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Minimum: 0.01</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ecommerce_currency" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Currency
+                                </label>
+                                <input type="text" name="ecommerce_currency" id="ecommerce_currency" maxlength="3" value="USD"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent uppercase"
+                                       placeholder="USD">
+                                <p class="text-xs text-gray-500 mt-1">3 letters (USD, EUR, GBP)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Geolocation -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Geolocation</h3>
+                        
+                        <div class="form-group">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" name="randomize_visitor_countries" id="randomize_visitor_countries" checked class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                                <div>
+                                    <span class="text-sm font-medium text-gray-700">Randomize Visitor Countries</span>
+                                    <p class="text-xs text-gray-500">Use global IP ranges for realistic geolocation (requires MATOMO_TOKEN_AUTH)</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                        <button type="button" onclick="location.reload()" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Reset
+                        </button>
+                        <button type="button" id="save-as-preset-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            💾 Save as Preset
+                        </button>
+                        <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-lg hover:bg-blue-600">
+                            Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tab Content: Presets -->
+        <div id="tab-presets" class="tab-content hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Load Presets</h2>
+                <p class="text-gray-600">Quick-start configurations for common load testing scenarios. Click any preset to load it into the configuration form.</p>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-medium text-blue-900">Presets preserve your Matomo URL, Site ID, and Token Auth</p>
+                        <p class="text-xs text-blue-700 mt-1">Only traffic and feature settings are changed when loading a preset.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Built-in Presets Grid -->
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">📦 Built-in Presets</h3>
+            <div id="presets-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Presets will be dynamically inserted here -->
+            </div>
+
+            <!-- Custom Presets Section -->
+            <div class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">⭐ My Saved Presets</h3>
+                <div id="custom-presets-container" class="bg-white rounded-lg border border-gray-200 p-6">
+                    <!-- Custom presets will be dynamically inserted here -->
+                    <div class="text-center py-8 text-gray-500">
+                        <p class="text-sm">Loading custom presets...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Logs -->
+        <div id="tab-logs" class="tab-content hidden">
+            <!-- Log Controls -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <!-- Left: Title and Stats -->
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">Container Logs</h2>
+                            <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                                <span>
+                                    <span class="font-medium" id="log-total-lines">0</span> lines
+                                    <span id="log-filtered-count" class="hidden ml-1 text-gray-500"></span>
+                                </span>
+                                <span class="text-gray-400">•</span>
+                                <span>
+                                    Status: <span id="log-container-status" class="font-medium">unknown</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Right: Actions -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <select id="log-lines-select" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="50">50 lines</option>
+                                <option value="100" selected>100 lines</option>
+                                <option value="500">500 lines</option>
+                                <option value="1000">1000 lines</option>
+                            </select>
+                            
+                            <button id="refresh-logs-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                            
+                            <button id="copy-logs-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                Copy
+                            </button>
+                            
+                            <button id="clear-logs-btn" class="px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50">
+                                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search and Toggles -->
+                    <div class="flex flex-col md:flex-row gap-4 mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex-1">
+                            <input type="text" id="log-search-input" placeholder="Search logs..." 
+                                   class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        
+                        <div class="flex items-center gap-6">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="auto-scroll-toggle" checked class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                                <span class="text-sm text-gray-700">Auto-scroll</span>
+                            </label>
+                            
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="auto-refresh-toggle" class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                                <span class="text-sm text-gray-700">Auto-refresh (2s)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Content -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div id="log-content" class="bg-gray-50 overflow-y-auto" style="max-height: 600px; min-height: 400px;">
+                    <div class="text-center text-gray-500 py-8">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p>Click "Refresh" to load logs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- URLs Tab -->
+        <div id="tab-urls" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">URL Management</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Manage the URLs used by the load generator. Changes require a container restart to take effect.
+                    </p>
+                </div>
+
+                <!-- Status Card -->
+                <div id="urls-status" class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">Current URLs</h3>
+                            <p class="mt-1 text-sm text-gray-600">
+                                <span id="urls-count">Loading...</span> URLs loaded
+                                <span class="mx-2">•</span>
+                                <span id="urls-source">source: checking...</span>
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-load-urls" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                            <button id="btn-download-urls" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Download
+                            </button>
+                            <button id="btn-reset-urls" class="btn-danger">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                URL Editor
+                                <span class="text-xs text-gray-500 ml-2">Format: URL [TAB] Optional Title</span>
+                            </label>
+                            <textarea
+                                id="urls-editor"
+                                rows="20"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary font-mono text-sm"
+                                placeholder="https://example.test/page-1&#10;https://example.test/page-2    Page 2 Title&#10;https://example.test/page-3    Page 3 Title"
+                            ></textarea>
+                            <p class="mt-1 text-xs text-gray-500">
+                                <span id="urls-line-count">0</span> lines
+                            </p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button id="btn-validate-urls" class="btn-secondary flex-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Validate URLs
+                            </button>
+                            <button id="btn-upload-file" class="btn-secondary flex-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Upload File
+                            </button>
+                            <input type="file" id="urls-file-input" accept=".txt" class="hidden">
+                            <button id="btn-save-urls" class="btn-primary flex-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                </svg>
+                                Save URLs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Results -->
+                <div id="urls-validation-results" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Validation Results</h3>
+                    <div id="urls-validation-content" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- URL Structure Preview -->
+                <div id="urls-structure-preview" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">URL Structure</h3>
+                    <div id="urls-structure-content" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Tab -->
+        <div id="tab-events" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Event Management</h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Customize Matomo events that are generated during load testing. Configure click events and random events with their probabilities.
+                    </p>
+                    <div class="mt-2 p-3 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            <strong>Note:</strong> After saving event changes, you must restart the container for them to take effect.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Status Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-500 mb-1">Current Configuration</p>
+                            <p class="text-lg font-medium text-gray-900">
+                                <span id="events-click-count">Loading...</span> click events, 
+                                <span id="events-random-count">Loading...</span> random events
+                                <span class="mx-2">•</span>
+                                <span id="events-source">source: checking...</span>
+                            </p>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Click probability: <span id="events-click-prob">0%</span> &middot; 
+                                Random probability: <span id="events-random-prob">0%</span>
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-load-events" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                            <button id="btn-download-events" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Download
+                            </button>
+                            <button id="btn-reset-events" class="btn-danger">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">Event Configuration</h3>
+                            <span class="text-sm text-gray-500">JSON format</span>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <textarea 
+                                id="events-editor" 
+                                class="w-full h-96 p-3 border border-gray-300 rounded-md font-mono text-sm focus:ring-primary focus:border-primary"
+                                placeholder='{"click_events": [...], "random_events": [...], "click_events_probability": 0.25, "random_events_probability": 0.12}'
+                            ></textarea>
+                            <div class="flex items-center justify-between text-sm text-gray-500">
+                                <span><span id="events-line-count">0</span> lines</span>
+                                <span>Format: JSON</span>
+                            </div>
+                        </div>
+
+                        <input type="file" id="events-file-input" class="hidden" accept=".json" />
+
+                        <div class="flex gap-2 pt-2 border-t border-gray-200">
+                            <button id="btn-validate-events" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Validate Events
+                            </button>
+                            <button id="btn-upload-events-file" class="btn-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Upload File
+                            </button>
+                            <div class="flex-1"></div>
+                            <button id="btn-save-events" class="btn-primary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                </svg>
+                                Save Events
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Results -->
+                <div id="events-validation-results" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Validation Results</h3>
+                    <div id="events-validation-content" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Statistics Preview -->
+                <div id="events-statistics-preview" class="hidden bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Event Statistics</h3>
+                    <div id="events-statistics-content" class="space-y-4">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <p class="text-center text-sm text-gray-500">
+                Matomo Load Generator Control UI &middot; 
+                <a href="https://github.com/yourusername/trafficinator" class="text-primary hover:underline">Documentation</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/api.js?v=10"></script>
+    <script src="/static/js/ui.js?v=10"></script>
+    <script src="/static/js/status.js?v=10"></script>
+    <script src="/static/js/config.js?v=10"></script>
+    <script src="/static/js/presets.js?v=10"></script>
+    <script src="/static/js/logs.js?v=10"></script>
+    <script src="/static/js/urls.js?v=10"></script>
+    <script src="/static/js/events.js?v=10"></script>
+    <script src="/static/js/app.js?v=10"></script>
+</body>
+</html>
