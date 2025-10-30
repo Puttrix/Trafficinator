@@ -32,3 +32,7 @@
 - tool: apply_patch (control-ui/static/js/config.js, control-ui/static/js/status.js)
 - result: Wired the UI to the new persistence flow: config/status tabs now consume `status.config`, automatically fall back to the most recent saved preset when the container isn’t running, and display saved settings on the dashboard.
 - artifacts: none
+
+- tool: apply_patch (add `.assistant/ai_guidance.md`, update backlog/status, remove legacy CLAUDE.md)
+- result: Migrated assistant-facing documentation into `.assistant/ai_guidance.md` with accurate compose references and embedded-URL notes, and marked P-001/P-002 completed.
+- artifacts: `.assistant/ai_guidance.md`
