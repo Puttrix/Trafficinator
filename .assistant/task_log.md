@@ -64,3 +64,7 @@
 - tool: shell (`python3 -m pytest matomo-load-baked/tests`)
 - result: All tests passing (11 total) after installing dev requirements.
 - artifacts: none
+
+- tool: shell (`bash -lc "sed -n '620,780p' matomo-load-baked/loader.py"`; `bash -lc "sed -n '100,280p' control-ui/static/js/events.js"`); update backlog
+- result: Confirmed the Control UI already supports full custom event management (editor, validation, upload/download, backend endpoints) and marked P-028 complete.
+- artifacts: none

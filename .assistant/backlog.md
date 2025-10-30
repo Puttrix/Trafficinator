@@ -212,21 +212,22 @@
       - API endpoints: GET /api/urls, POST /api/urls, DELETE /api/urls ✅
       result: Complete URL management feature with 5th tab in Web UI. Backend: url_validator.py (238 lines) with validate_url_line(), validate_urls(), parse_url_structure(), format_urls_for_file(). API endpoints: GET /api/urls (retrieve), POST /api/urls (upload), DELETE /api/urls (reset), POST /api/urls/validate (validation only). Frontend: urls.js (376 lines) with URLManager class implementing loadUrls(), saveUrls(), validateUrls(), downloadUrls(), resetUrls(), parseStructure(). UI displays URL count, source (custom/default/container), validation results with errors/warnings, structure preview with category distribution graphs, and statistics (total URLs, categories, subcategories, domains). File upload support for .txt files. Comprehensive documentation added to WEB_UI_GUIDE.md covering URLs tab usage and API reference.
 
-- [ ] **P-028** Custom event configuration in Web UI
-      tags: webui, config, events  priority: medium  est: 8h
+- [x] **P-028** Custom event configuration in Web UI
+      tags: webui, config, events  priority: medium  est: 8h  completed: 2025-01-29
       deps: P-025
       accepts:
-      - View current event definitions (click events, random events)
-      - Configure custom click events (category, action, name, value)
-      - Configure custom random events (behavioral, system, engagement)
-      - Edit event probabilities per event type
-      - JSON editor with validation for event structure
-      - Preview event distribution (how often each fires)
-      - Upload/download event configuration files
-      - Reset to default event definitions
-      - Test mode: Generate sample events to verify configuration
-      - Apply event changes (requires container restart)
-      - API endpoints: GET /api/events, POST /api/events, PUT /api/events/:id, DELETE /api/events/:id
+      - View current event definitions (click events, random events) ✅
+      - Configure custom click events (category, action, name, value) ✅
+      - Configure custom random events (behavioral, system, engagement) ✅
+      - Edit event probabilities per event type ✅
+      - JSON editor with validation for event structure ✅
+      - Preview event distribution (how often each fires) ✅
+      - Upload/download event configuration files ✅
+      - Reset to default event definitions ✅
+      - Test mode: Generate sample events to verify configuration ✅
+      - Apply event changes (requires container restart) ✅
+      - API endpoints: GET /api/events, POST /api/events, PUT /api/events/:id, DELETE /api/events/:id ✅
+      result: Events tab delivers full JSON editor with validation, upload/download/reset workflows, probability controls, preview statistics, and backend endpoints for persistence.
 
 - [ ] **P-029** Conversion funnel / user journey sequences
       tags: webui, config, funnels, journeys  priority: high  est: 10h
