@@ -3,7 +3,6 @@ Pydantic models for request/response validation
 """
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List
-from datetime import datetime
 
 
 class ContainerState(BaseModel):
@@ -113,3 +112,47 @@ class ApplyConfigResponse(BaseModel):
 class URLContentRequest(BaseModel):
     """Request for URL validation/upload"""
     content: str = Field(..., description="URL file content (one URL per line)")
+
+
+class PresetMetadata(BaseModel):
+    """Metadata for a saved configuration preset"""
+    id: int
+    name: str
+    description: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class PresetDetail(PresetMetadata):
+    """Detailed preset information with configuration"""
+    config: Dict[str, Any]
+
+
+class PresetListResponse(BaseModel):
+    """Response for GET /api/presets"""
+    presets: List[PresetMetadata]
+
+
+class PresetCreateRequest(BaseModel):
+    """Request body for creating a preset"""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    config: Dict[str, Any]
+
+    model_config = ConfigDict(extra='forbid')
+
+
+class PresetUpdateRequest(BaseModel):
+    """Request body for updating a preset"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    config: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(extra='forbid')
+
+
+class PresetDeleteResponse(BaseModel):
+    """Response for deleting a preset"""
+    success: bool
+    deleted_id: int
+    message: str

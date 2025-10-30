@@ -78,16 +78,17 @@
       - Integration with loader validation logic ✅
       result: Complete config validation with Pydantic models, 25+ field validations, business rule checks (min/max ranges, token_auth requirements), warnings for high values, async Matomo connectivity testing with detailed error reporting
 
-- [ ] **P-018** Implement configuration persistence
-      tags: webui, backend, database  priority: medium  est: 4h
+- [x] **P-018** Implement configuration persistence
+      tags: webui, backend, database  priority: medium  est: 4h  completed: 2025-10-30
       deps: P-016
       accepts:
-      - SQLite database for storing configurations
-      - GET /api/configs - List saved configurations
-      - POST /api/configs - Save new configuration
-      - PUT /api/configs/:id - Update configuration
-      - DELETE /api/configs/:id - Delete configuration
-      - GET /api/configs/:id - Load specific configuration
+      - SQLite database for storing configurations ✅
+      - GET /api/presets - List saved configurations ✅
+      - POST /api/presets - Save new configuration ✅
+      - PUT /api/presets/:id - Update configuration ✅
+      - DELETE /api/presets/:id - Delete configuration ✅
+      - GET /api/presets/:id - Load specific configuration ✅
+      result: Delivered SQLite-backed presets service with FastAPI CRUD endpoints (`/api/presets*`) and Pydantic models; frontend preset manager now persists named configurations end-to-end.
 
 - [x] **P-019** Add authentication and security layer
       tags: webui, backend, security  priority: high  est: 6h  completed: 2025-10-29

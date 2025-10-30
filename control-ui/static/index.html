@@ -512,6 +512,9 @@
                         <button type="button" onclick="location.reload()" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
                             Reset
                         </button>
+                        <button type="button" id="save-as-preset-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            💾 Save as Preset
+                        </button>
                         <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-lg hover:bg-blue-600">
                             Save Configuration
                         </button>
@@ -540,22 +543,20 @@
                 </div>
             </div>
 
-            <!-- Presets Grid -->
-            <div id="presets-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Built-in Presets Grid -->
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">📦 Built-in Presets</h3>
+            <div id="presets-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <!-- Presets will be dynamically inserted here -->
             </div>
 
-            <!-- Custom Preset Section -->
-            <div class="bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-300">
-                <div class="text-center">
-                    <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Need a Custom Configuration?</h3>
-                    <p class="text-sm text-gray-600 mb-4">Create your own configuration in the Configuration tab with exactly the settings you need.</p>
-                    <button onclick="UI.switchTab('config')" class="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-blue-600">
-                        Go to Configuration
-                    </button>
+            <!-- Custom Presets Section -->
+            <div class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">⭐ My Saved Presets</h3>
+                <div id="custom-presets-container" class="bg-white rounded-lg border border-gray-200 p-6">
+                    <!-- Custom presets will be dynamically inserted here -->
+                    <div class="text-center py-8 text-gray-500">
+                        <p class="text-sm">Loading custom presets...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -885,14 +886,14 @@
     </footer>
 
     <!-- Scripts -->
-    <script src="/static/js/api.js?v=3"></script>
-    <script src="/static/js/ui.js?v=2"></script>
-    <script src="/static/js/config.js?v=3"></script>
-    <script src="/static/js/status.js?v=4"></script>
-    <script src="/static/js/presets.js?v=2"></script>
-    <script src="/static/js/logs.js?v=2"></script>
-    <script src="/static/js/urls.js?v=2"></script>
-    <script src="/static/js/events.js?v=2"></script>
-    <script src="/static/js/app.js?v=2"></script>
+    <script src="/static/js/api.js?v=10"></script>
+    <script src="/static/js/ui.js?v=10"></script>
+    <script src="/static/js/status.js?v=10"></script>
+    <script src="/static/js/config.js?v=10"></script>
+    <script src="/static/js/presets.js?v=10"></script>
+    <script src="/static/js/logs.js?v=10"></script>
+    <script src="/static/js/urls.js?v=10"></script>
+    <script src="/static/js/events.js?v=10"></script>
+    <script src="/static/js/app.js?v=10"></script>
 </body>
 </html>

@@ -47,6 +47,12 @@ class ConfigForm {
         toggles.forEach(toggle => {
             toggle.addEventListener('change', () => this.handleToggle(toggle));
         });
+
+        // Save as preset button
+        const savePresetBtn = document.getElementById('save-as-preset-btn');
+        if (savePresetBtn) {
+            savePresetBtn.addEventListener('click', () => this.saveAsPreset());
+        }
     }
 
     // Load current configuration from API
@@ -467,6 +473,120 @@ class ConfigForm {
             UI.showAlert(`Error applying configuration: ${error.message}`, 'error');
             console.error('Apply config error:', error);
         }
+    }
+
+    // Save current configuration as a preset
+    async saveAsPreset() {
+        // First validate
+        const isValid = await this.validateConfig();
+        
+        if (!isValid) {
+            UI.showAlert('Please fix validation errors before saving as preset', 'error');
+            return;
+        }
+
+        // Create a custom dialog for preset name and description
+        const dialogHtml = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="save-preset-dialog">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <h3 class="text-lg font-semibold mb-4">Save Configuration as Preset</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Preset Name *</label>
+                            <input type="text" id="preset-name-input" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="e.g., Production Load Test">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+                            <textarea id="preset-description-input" rows="3"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Describe this configuration..."></textarea>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button id="cancel-preset-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button id="save-preset-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                            Save Preset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add dialog to DOM
+        document.body.insertAdjacentHTML('beforeend', dialogHtml);
+        
+        const dialog = document.getElementById('save-preset-dialog');
+        const nameInput = document.getElementById('preset-name-input');
+        const descInput = document.getElementById('preset-description-input');
+        const cancelBtn = document.getElementById('cancel-preset-btn');
+        const saveBtn = document.getElementById('save-preset-confirm-btn');
+
+        // Focus name input
+        nameInput.focus();
+
+        // Cancel handler
+        const closeDialog = () => {
+            dialog.remove();
+        };
+
+        cancelBtn.addEventListener('click', closeDialog);
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) closeDialog();
+        });
+
+        // Save handler
+        saveBtn.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                UI.showAlert('Please enter a preset name', 'error');
+                nameInput.focus();
+                return;
+            }
+
+            const description = descInput.value.trim() || null;
+
+            try {
+                closeDialog();
+                UI.showLoading('Saving preset...');
+                
+                // Get the presets manager (from the global instance)
+                if (!window.loadPresets) {
+                    throw new Error('Presets manager not initialized');
+                }
+
+                await window.loadPresets.saveCustomPreset(name, description);
+                
+                UI.hideLoading();
+
+                // Offer to switch to presets tab
+                UI.confirm(
+                    'Preset saved successfully! Would you like to view your saved presets?',
+                    () => {
+                        UI.switchTab('presets');
+                        if (window.loadPresets) {
+                            window.loadPresets.renderCustomPresets();
+                        }
+                    }
+                );
+                
+            } catch (error) {
+                UI.hideLoading();
+                UI.showAlert(`Error saving preset: ${error.message}`, 'error');
+                console.error('Save preset error:', error);
+            }
+        });
+
+        // Enter key to save
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveBtn.click();
+            }
+        });
     }
 }
 

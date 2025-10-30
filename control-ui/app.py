@@ -16,6 +16,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+from sqlite3 import IntegrityError
+
 from docker_client import DockerClient
 from container_manager import ContainerManager
 from models import (
@@ -27,6 +29,11 @@ from models import (
     LogsResponse,
     ApplyConfigResponse,
     URLContentRequest,
+    PresetListResponse,
+    PresetDetail,
+    PresetCreateRequest,
+    PresetUpdateRequest,
+    PresetDeleteResponse,
 )
 from config_validator import (
     ConfigValidator,
@@ -34,6 +41,7 @@ from config_validator import (
     MatomoConnectionResult,
 )
 from auth import verify_api_key, is_auth_enabled
+from db import Database
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -41,6 +49,7 @@ limiter = Limiter(key_func=get_remote_address)
 # Initialize Docker client and container manager
 docker_client = DockerClient()
 container_manager = ContainerManager(docker_client)
+config_database = Database(os.getenv("CONFIG_DB_PATH", "/app/data/presets.db"))
 
 
 @asynccontextmanager
@@ -464,6 +473,145 @@ async def apply_config(
         raise HTTPException(
             status_code=500,
             detail=f"Error applying configuration: {str(e)}"
+        )
+
+
+# ============================================================================
+# Configuration Presets
+# ============================================================================
+
+@app.get("/api/presets", response_model=PresetListResponse)
+@limiter.limit("30/minute")
+async def list_presets(
+    request: Request,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    List saved configuration presets (metadata only)
+    """
+    try:
+        presets = config_database.list_presets()
+        return PresetListResponse(presets=presets)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error listing presets: {str(e)}"
+        )
+
+
+@app.post("/api/presets", response_model=PresetDetail, status_code=201)
+@limiter.limit("10/minute")
+async def create_preset(
+    request: Request,
+    preset: PresetCreateRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Create a new configuration preset
+    """
+    try:
+        created = config_database.create_preset(
+            name=preset.name,
+            config=preset.config,
+            description=preset.description,
+        )
+        return PresetDetail(**created)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Preset name already exists"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating preset: {str(e)}"
+        )
+
+
+@app.get("/api/presets/{preset_id}", response_model=PresetDetail)
+@limiter.limit("30/minute")
+async def get_preset(
+    request: Request,
+    preset_id: int,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Retrieve a configuration preset by ID
+    """
+    try:
+        preset = config_database.get_preset(preset_id)
+        if not preset:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        return PresetDetail(**preset)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving preset: {str(e)}"
+        )
+
+
+@app.put("/api/presets/{preset_id}", response_model=PresetDetail)
+@limiter.limit("10/minute")
+async def update_preset(
+    request: Request,
+    preset_id: int,
+    preset: PresetUpdateRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Update an existing configuration preset
+    """
+    try:
+        updated = config_database.update_preset(
+            preset_id,
+            name=preset.name,
+            config=preset.config,
+            description=preset.description,
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        return PresetDetail(**updated)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Preset name already exists"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating preset: {str(e)}"
+        )
+
+
+@app.delete("/api/presets/{preset_id}", response_model=PresetDeleteResponse)
+@limiter.limit("10/minute")
+async def delete_preset(
+    request: Request,
+    preset_id: int,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Delete a configuration preset
+    """
+    try:
+        deleted = config_database.delete_preset(preset_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        return PresetDeleteResponse(
+            success=True,
+            deleted_id=preset_id,
+            message="Preset deleted successfully"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting preset: {str(e)}"
         )
 
 

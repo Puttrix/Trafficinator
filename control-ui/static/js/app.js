@@ -26,6 +26,9 @@ class App {
         // Initialize load presets
         this.loadPresets = new LoadPresets();
         this.loadPresets.init();
+        
+        // Make load presets globally available for config form
+        window.loadPresets = this.loadPresets;
 
         // Initialize log viewer
         this.logViewer = new LogViewer();
@@ -120,7 +123,10 @@ class App {
                 // Config form will load in P-021
                 break;
             case 'presets':
-                // Presets will load in P-022
+                // Load custom presets when tab is shown
+                if (this.loadPresets) {
+                    this.loadPresets.renderCustomPresets();
+                }
                 break;
             case 'logs':
                 // Logs tab auto-loads via onTabActivated

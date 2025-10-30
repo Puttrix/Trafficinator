@@ -417,6 +417,165 @@ class LoadPresets {
         
         return null;
     }
+
+    // Load custom presets from database
+    async loadCustomPresets() {
+        try {
+            const response = await api.request('/api/presets');
+            return response.presets || [];
+        } catch (error) {
+            console.error('Failed to load custom presets:', error);
+            return [];
+        }
+    }
+
+    // Save current config as custom preset
+    async saveCustomPreset(name, description = null) {
+        const form = document.getElementById('config-form');
+        if (!form) {
+            throw new Error('Configuration form not found');
+        }
+
+        // Get current form config
+        const config = {};
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.type === 'checkbox') {
+                config[input.name] = input.checked;
+            } else if (input.type === 'number') {
+                config[input.name] = parseFloat(input.value) || 0;
+            } else {
+                config[input.name] = input.value.trim();
+            }
+        });
+
+        try {
+            const response = await api.request('/api/presets', {
+                method: 'POST',
+                body: JSON.stringify({ name, description, config })
+            });
+            
+            UI.showAlert(`Preset "${name}" saved successfully!`, 'success');
+            return response;
+        } catch (error) {
+            console.error('Failed to save preset:', error);
+            throw error;
+        }
+    }
+
+    // Load custom preset by ID
+    async loadCustomPresetById(presetId) {
+        try {
+            const preset = await api.request(`/api/presets/${presetId}`);
+            
+            // Populate form with preset config
+            this.populateForm(preset.config);
+            
+            UI.showAlert(`Preset "${preset.name}" loaded successfully!`, 'success');
+            UI.switchTab('config');
+            
+            return preset;
+        } catch (error) {
+            console.error('Failed to load custom preset:', error);
+            throw error;
+        }
+    }
+
+    // Delete custom preset
+    async deleteCustomPreset(presetId, presetName) {
+        try {
+            await api.request(`/api/presets/${presetId}`, {
+                method: 'DELETE'
+            });
+            
+            UI.showAlert(`Preset "${presetName}" deleted successfully!`, 'success');
+        } catch (error) {
+            console.error('Failed to delete preset:', error);
+            throw error;
+        }
+    }
+
+    // Render custom presets section
+    async renderCustomPresets() {
+        const container = document.getElementById('custom-presets-container');
+        if (!container) return;
+
+        const customPresets = await this.loadCustomPresets();
+
+        if (customPresets.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-sm">No custom presets saved yet.</p>
+                    <p class="text-xs mt-1">Save your current configuration from the Config tab.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="space-y-3">';
+        
+        customPresets.forEach(preset => {
+            const createdDate = new Date(preset.created_at).toLocaleDateString();
+            html += `
+                <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-gray-900">${UI.escapeHtml(preset.name)}</h4>
+                        ${preset.description ? `<p class="text-sm text-gray-500 mt-1">${UI.escapeHtml(preset.description)}</p>` : ''}
+                        <p class="text-xs text-gray-400 mt-1">Saved: ${createdDate}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="load-custom-preset-btn px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" data-preset-id="${preset.id}" data-preset-name="${UI.escapeHtml(preset.name)}">
+                            Load
+                        </button>
+                        <button class="delete-custom-preset-btn px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700" data-preset-id="${preset.id}" data-preset-name="${UI.escapeHtml(preset.name)}">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Add event listeners
+        document.querySelectorAll('.load-custom-preset-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const presetId = parseInt(btn.dataset.presetId);
+                const presetName = btn.dataset.presetName;
+                
+                UI.confirm(
+                    `Load "${presetName}" preset?`,
+                    async () => {
+                        try {
+                            await this.loadCustomPresetById(presetId);
+                        } catch (error) {
+                            UI.showAlert(`Failed to load preset: ${error.message}`, 'error');
+                        }
+                    }
+                );
+            });
+        });
+
+        document.querySelectorAll('.delete-custom-preset-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const presetId = parseInt(btn.dataset.presetId);
+                const presetName = btn.dataset.presetName;
+                
+                UI.confirm(
+                    `Delete "${presetName}" preset? This cannot be undone.`,
+                    async () => {
+                        try {
+                            await this.deleteCustomPreset(presetId, presetName);
+                            await this.renderCustomPresets();  // Refresh list
+                        } catch (error) {
+                            UI.showAlert(`Failed to delete preset: ${error.message}`, 'error');
+                        }
+                    }
+                );
+            });
+        });
+    }
 }
 
 // Export for use in app
