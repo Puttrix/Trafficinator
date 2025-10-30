@@ -84,3 +84,7 @@
 - tool: shell (`python3 -m pytest matomo-load-baked/tests`)
 - result: All tests passing (13 total) after funnel execution support.
 - artifacts: none
+
+- tool: apply_patch (control-ui/static/index.html, control-ui/static/js/api.js, control-ui/static/js/app.js, control-ui/static/js/funnels.js)
+- result: Built Funnels tab with templates, structured step editor, preview/test mode, and API integration (P-029C).
+- artifacts: control-ui/static/js/funnels.js

@@ -249,15 +249,16 @@
       - Unit tests verifying deterministic funnel execution ordering ✅
       result: Loader reads funnels from `FUNNEL_CONFIG_PATH`, executes ordered steps with delays/events, and pytest suite covers funnel loading/selection.
 
-- [ ] **P-029C** Funnel builder UI & management
-      tags: webui, frontend, funnels  priority: high  est: 6h
+- [x] **P-029C** Funnel builder UI & management
+      tags: webui, frontend, funnels  priority: high  est: 6h  completed: 2025-10-30
       deps: P-029A
       accepts:
-      - New Funnels tab listing existing funnels with create/edit/delete actions
-      - Visual builder/editor (drag/drop or structured form) for step sequences
-      - Funnel templates (e.g., Ecommerce Purchase, Lead Gen, Content Consumption)
-      - Test mode to simulate a funnel and display the resulting sequence
-      - Statistics/preview of funnel completion and probabilities
+      - New Funnels tab listing existing funnels with create/edit/delete actions ✅
+      - Visual builder/editor (drag/drop or structured form) for step sequences ✅
+      - Funnel templates (e.g., Ecommerce Purchase, Lead Gen, Content Consumption) ✅
+      - Test mode to simulate a funnel and display the resulting sequence ✅
+      - Statistics/preview of funnel completion and probabilities ✅
+      result: Added Funnels tab with list, templates, structured step editor, preview/test mode, and backend integration.
 
 - [ ] **P-029D** Documentation & monitoring
       tags: documentation, testing, funnels  priority: medium  est: 2h
