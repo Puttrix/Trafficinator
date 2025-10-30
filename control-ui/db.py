@@ -3,24 +3,30 @@ Database module for configuration presets
 
 SQLite database for storing and managing configuration presets.
 """
+import os
 import sqlite3
 import json
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+DEFAULT_DB_PATH = Path(
+    os.getenv("CONFIG_DB_PATH", Path(__file__).resolve().parent / "data" / "presets.db")
+)
+
 
 class Database:
     """SQLite database manager for configuration presets"""
     
-    def __init__(self, db_path: str = "/app/data/presets.db"):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize database connection
         
         Args:
             db_path: Path to SQLite database file
         """
-        self.db_path = db_path
+        resolved_path = Path(db_path) if db_path else DEFAULT_DB_PATH
+        self.db_path = str(resolved_path)
         self.ensure_data_directory()
         self.init_schema()
     

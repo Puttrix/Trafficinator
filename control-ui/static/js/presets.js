@@ -455,6 +455,11 @@ class LoadPresets {
                 body: JSON.stringify({ name, description, config })
             });
             
+            await this.renderCustomPresets();
+            if (window.app?.statusDashboard?.refreshSavedPresets) {
+                window.app.statusDashboard.refreshSavedPresets();
+            }
+
             UI.showAlert(`Preset "${name}" saved successfully!`, 'success');
             return response;
         } catch (error) {
@@ -568,6 +573,9 @@ class LoadPresets {
                         try {
                             await this.deleteCustomPreset(presetId, presetName);
                             await this.renderCustomPresets();  // Refresh list
+                            if (window.app?.statusDashboard?.refreshSavedPresets) {
+                                window.app.statusDashboard.refreshSavedPresets();
+                            }
                         } catch (error) {
                             UI.showAlert(`Failed to delete preset: ${error.message}`, 'error');
                         }

@@ -49,7 +49,7 @@ limiter = Limiter(key_func=get_remote_address)
 # Initialize Docker client and container manager
 docker_client = DockerClient()
 container_manager = ContainerManager(docker_client)
-config_database = Database(os.getenv("CONFIG_DB_PATH", "/app/data/presets.db"))
+config_database = Database(os.getenv("CONFIG_DB_PATH"))
 
 
 @asynccontextmanager

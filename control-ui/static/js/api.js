@@ -99,26 +99,23 @@ class API {
 
     // Start container
     async startContainer(config = null) {
-        return this.request('/api/start', {
-            method: 'POST',
-            body: JSON.stringify(config ? { config } : {})
-        });
+        const options = { method: 'POST' };
+        if (config && Object.keys(config).length > 0) {
+            options.body = JSON.stringify({ config });
+        }
+        return this.request('/api/start', options);
     }
 
     // Stop container
     async stopContainer(timeout = 10) {
-        return this.request('/api/stop', {
-            method: 'POST',
-            body: JSON.stringify({ timeout })
-        });
+        const url = `/api/stop?timeout=${encodeURIComponent(timeout)}`;
+        return this.request(url, { method: 'POST' });
     }
 
     // Restart container
     async restartContainer(timeout = 10) {
-        return this.request('/api/restart', {
-            method: 'POST',
-            body: JSON.stringify({ timeout })
-        });
+        const url = `/api/restart?timeout=${encodeURIComponent(timeout)}`;
+        return this.request(url, { method: 'POST' });
     }
 
     // Get logs

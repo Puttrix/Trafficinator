@@ -60,18 +60,58 @@ class ConfigForm {
         try {
             UI.showLoading('Loading configuration...');
             const status = await api.getStatus();
-            
-            // Parse environment variables if container is running
-            if (status.status === 'running' && status.environment) {
-                this.currentConfig = this.parseEnvVars(status.environment);
-                this.populateForm(this.currentConfig);
+            let configLoaded = false;
+
+            if (status?.config) {
+                const envList = Object.entries(status.config)
+                    .filter(([, value]) => value !== undefined && value !== null)
+                    .map(([key, value]) => `${key}=${value}`);
+                
+                if (envList.length > 0) {
+                    const parsedConfig = this.parseEnvVars(envList);
+                    if (Object.keys(parsedConfig).length > 0) {
+                        this.currentConfig = parsedConfig;
+                        this.populateForm(parsedConfig);
+                        configLoaded = true;
+                    }
+                }
             }
-            
-            UI.hideLoading();
+
+            if (!configLoaded) {
+                const latestPreset = await this.fetchLatestPresetConfig();
+                if (latestPreset) {
+                    this.currentConfig = latestPreset;
+                    this.populateForm(latestPreset);
+                    UI.showAlert('Loaded your most recent saved preset into the form.', 'info', 4000);
+                    configLoaded = true;
+                }
+            }
+
+            if (!configLoaded) {
+                console.info('No active container configuration or saved presets found; using default form values.');
+            }
         } catch (error) {
-            UI.hideLoading();
             console.error('Failed to load config:', error);
             UI.showAlert('Could not load current configuration. Form will show defaults.', 'warning');
+        } finally {
+            UI.hideLoading();
+        }
+    }
+
+    async fetchLatestPresetConfig() {
+        try {
+            const response = await api.request('/api/presets');
+            const presets = response.presets || [];
+            if (presets.length === 0) {
+                return null;
+            }
+
+            const latest = presets[0];
+            const detail = await api.request(`/api/presets/${latest.id}`);
+            return detail.config || null;
+        } catch (error) {
+            console.error('Failed to load latest preset configuration:', error);
+            return null;
         }
     }
 
@@ -161,6 +201,10 @@ class ConfigForm {
                     break;
             }
         });
+
+        if (config.matomo_token_auth === '***MASKED***') {
+            config.matomo_token_auth = '';
+        }
         
         return config;
     }
@@ -568,9 +612,6 @@ class ConfigForm {
                     'Preset saved successfully! Would you like to view your saved presets?',
                     () => {
                         UI.switchTab('presets');
-                        if (window.loadPresets) {
-                            window.loadPresets.renderCustomPresets();
-                        }
                     }
                 );
                 
