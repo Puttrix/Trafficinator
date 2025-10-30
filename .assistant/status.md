@@ -31,6 +31,8 @@
 - `control-ui/static/js/app.js` — Frontend controller orchestrating API calls.
 - `docker-compose.webui.yml` — Compose stack for control UI + generator.
 - `.assistant/ai_guidance.md` — Current AI-assistant quickstart (replaces legacy CLAUDE.md).
+- `tools/validate_config.py` — CLI validator for environment variables and Matomo connectivity.
+- `presets/.env.*` — Ready-to-use Light/Medium/Heavy environment presets for Docker Compose.
 
 ---
 
@@ -38,6 +40,8 @@
 - Completed P-015 through P-017 (FastAPI service, REST endpoints, validation + Matomo connectivity).
 - Security baseline (P-019) landed: API key auth, CORS, rate limiting, headers.
 - Frontend skeleton (P-020+) committed: responsive layout, config form, status dashboard, presets, log viewer.
+- Added pytest coverage for ecommerce/events plus CLI validation utility (P-003/P-004).
+- Published Docker Compose presets for Light/Medium/Heavy workloads (P-005).
 
 ---
 

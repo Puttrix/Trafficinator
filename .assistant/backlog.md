@@ -14,21 +14,24 @@
       result: `.assistant/ai_guidance.md` explains that `urls.txt` ships inside the image and custom URLs are managed through the Control UI.
 
 ## Testing & Quality
-- [ ] **P-003** Enhance test coverage for complex behaviors
-      tags: testing, quality  priority: high  est: 4h
+- [x] **P-003** Enhance test coverage for complex behaviors
+      tags: testing, quality  priority: high  est: 4h  completed: 2025-10-30
       deps: none
       accepts: Tests cover events, ecommerce, daily cap, and action ordering guarantees
+      result: Added pytest modules for ecommerce orders and event definitions, and updated action ordering tests to cover click/random events.
 
-- [ ] **P-004** Add validation utilities for configuration
-      tags: testing, devx  priority: medium  est: 3h
+- [x] **P-004** Add validation utilities for configuration
+      tags: testing, devx  priority: medium  est: 3h  completed: 2025-10-30
       deps: none
       accepts: Script validates env vars and tests Matomo connectivity before load test
+      result: Introduced `tools/validate_config.py` CLI that reuses the Control UI validator to check environment variables and optionally probe Matomo connectivity.
 
 ## Features - Short Term
-- [ ] **P-005** Create load preset configurations (Light/Medium/Heavy)
-      tags: feature, usability  priority: low  est: 2h
+- [x] **P-005** Create load preset configurations (Light/Medium/Heavy)
+      tags: feature, usability  priority: low  est: 2h  completed: 2025-10-30
       deps: none
       accepts: Example compose files or env templates for Light (1k/day), Medium (10k/day), Heavy (50k+/day)
+      result: Added CLI-friendly presets (`presets/.env.light|medium|heavy`) plus documentation for using them with Docker Compose.
 
 - [ ] **P-006** Improve realistic traffic patterns with user journeys
       tags: feature, realism  priority: medium  est: 6h

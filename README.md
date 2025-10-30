@@ -182,6 +182,35 @@ environment:
   TIMEZONE: "UTC"                     # Timezone for visit timestamps (e.g., "America/New_York")
 ```
 
+### Validate configuration before running
+
+Use the CLI validator to confirm your environment variables (and optional Matomo connectivity) are correct before starting a load test:
+
+```bash
+python tools/validate_config.py --env-file path/to/.env
+# or rely on current environment variables
+python tools/validate_config.py
+```
+
+Add `--skip-connection` to omit the connectivity probe.
+
+### Preset environment files
+
+Prefer the CLI? Use the ready-made presets in `presets/`:
+
+```bash
+# Light workload (~1k visits/day)
+docker compose --env-file presets/.env.light up -d
+
+# Medium workload (~10k visits/day)
+docker compose --env-file presets/.env.medium up -d
+
+# Heavy workload (~50k+ visits/day)
+docker compose --env-file presets/.env.heavy up -d
+```
+
+Each preset mirrors the Control UI presets; edit `MATOMO_URL`, `MATOMO_SITE_ID`, and other values as needed. See `presets/README.md` for details.
+
 ### URL Structure  
 The load generator uses a **3-level hierarchical URL structure** with **2,000 pre-built URLs embedded in the image**:
 - **10 main categories**: products, blog, support, company, resources, news, services, solutions, documentation, community

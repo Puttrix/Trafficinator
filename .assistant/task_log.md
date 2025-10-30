@@ -36,3 +36,31 @@
 - tool: apply_patch (add `.assistant/ai_guidance.md`, update backlog/status, remove legacy CLAUDE.md)
 - result: Migrated assistant-facing documentation into `.assistant/ai_guidance.md` with accurate compose references and embedded-URL notes, and marked P-001/P-002 completed.
 - artifacts: `.assistant/ai_guidance.md`
+
+- tool: apply_patch (matomo-load-baked/tests/test_choose_action_pages.py, test_ecommerce_orders.py, test_events.py)
+- result: Expanded pytest coverage to include ecommerce order generation, event definition sanity checks, and updated action ordering guarantees (P-003).
+- artifacts: none
+
+- tool: apply_patch (`tools/validate_config.py`, README.md, .assistant/backlog.md, .assistant/status.md)
+- result: Added CLI configuration validator with README instructions, marked backlog items P-003/P-004 complete, and recorded the new artifact in status.
+- artifacts: tools/validate_config.py
+
+- tool: shell (`python3 -m pytest matomo-load-baked/tests`)
+- result: Pytest not installed in environment (`ModuleNotFoundError: pytest`); tests not executed—install dev dependencies to run locally.
+- artifacts: none
+
+- tool: apply_patch (matomo-load-baked/tests/test_choose_action_pages.py, dev-requirements.txt)
+- result: Adjusted tests to load `loader.py` via importlib and added `pytz` to dev dependencies so pytest can import the module cleanly.
+- artifacts: none
+
+- tool: apply_patch (matomo-load-baked/tests/test_ecommerce_orders.py)
+- result: Corrected ecommerce test to compare numeric revenue bounds (float) instead of strings.
+- artifacts: none
+
+- tool: apply_patch (presets/.env.light, presets/.env.medium, presets/.env.heavy, presets/README.md, README.md, .assistant/backlog.md, .assistant/status.md)
+- result: Added CLI-friendly Light/Medium/Heavy preset env files with documentation, updated README instructions, and marked P-005 complete.
+- artifacts: presets/.env.light, presets/.env.medium, presets/.env.heavy, presets/README.md
+
+- tool: shell (`python3 -m pytest matomo-load-baked/tests`)
+- result: All tests passing (11 total) after installing dev requirements.
+- artifacts: none
