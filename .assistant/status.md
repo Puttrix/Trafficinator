@@ -42,6 +42,8 @@
 - Frontend skeleton (P-020+) committed: responsive layout, config form, status dashboard, presets, log viewer.
 - Added pytest coverage for ecommerce/events plus CLI validation utility (P-003/P-004).
 - Published Docker Compose presets for Light/Medium/Heavy workloads (P-005).
+- Delivered funnel data model and CRUD API groundwork (P-029A) ahead of loader/UI implementation.
+- Loader now executes funnel journeys with probability/priority rules and tests (P-029B).
 
 ---
 

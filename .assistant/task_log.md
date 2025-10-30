@@ -68,3 +68,19 @@
 - tool: shell (`bash -lc "sed -n '620,780p' matomo-load-baked/loader.py"`; `bash -lc "sed -n '100,280p' control-ui/static/js/events.js"`); update backlog
 - result: Confirmed the Control UI already supports full custom event management (editor, validation, upload/download, backend endpoints) and marked P-028 complete.
 - artifacts: none
+
+- tool: apply_patch (control-ui/db.py, control-ui/models.py, control-ui/app.py)
+- result: Implemented funnel data model and CRUD API (P-029A) with SQLite schema updates, Pydantic validators, and authenticated `/api/funnels` endpoints.
+- artifacts: none
+
+- tool: shell (`python3 -m pytest matomo-load-baked/tests`)
+- result: Regression suite still passes (11 tests) after funnel backend changes.
+- artifacts: none
+
+- tool: apply_patch (matomo-load-baked/loader.py, control-ui/models.py, matomo-load-baked/tests/test_funnels.py)
+- result: Added funnel execution logic to the loader with probability/priority handling, helper functions for loading JSON configs, and pytest coverage for funnel loading/selection (P-029B).
+- artifacts: matomo-load-baked/tests/test_funnels.py
+
+- tool: shell (`python3 -m pytest matomo-load-baked/tests`)
+- result: All tests passing (13 total) after funnel execution support.
+- artifacts: none
