@@ -42,6 +42,10 @@ class App {
         this.eventManager = new EventManager();
         this.eventManager.init();
 
+        // Initialize funnel manager
+        this.funnelsManager = new FunnelsManager();
+        this.funnelsManager.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -97,6 +101,9 @@ class App {
         if (this.currentTab === 'events' && this.eventManager) {
             this.eventManager.onTabDeactivated();
         }
+        if (this.currentTab === 'funnels' && this.funnelsManager && this.funnelsManager.onTabDeactivated) {
+            this.funnelsManager.onTabDeactivated();
+        }
 
         // Start refresh for status tab
         if (tabName === 'status') {
@@ -112,6 +119,13 @@ class App {
         }
         if (tabName === 'events' && this.eventManager) {
             this.eventManager.onTabActivated();
+        }
+        if (tabName === 'funnels' && this.funnelsManager) {
+            if (this.funnelsManager.onTabActivated) {
+                this.funnelsManager.onTabActivated();
+            } else {
+                this.funnelsManager.loadFunnels();
+            }
         }
 
         // Load tab-specific data
@@ -136,6 +150,11 @@ class App {
                 break;
             case 'events':
                 // Events tab auto-loads via onTabActivated
+                break;
+            case 'funnels':
+                if (this.funnelsManager) {
+                    this.funnelsManager.loadFunnels();
+                }
                 break;
         }
     }

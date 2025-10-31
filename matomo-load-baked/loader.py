@@ -8,14 +8,22 @@ import aiohttp
 import logging
 import urllib.parse
 import ipaddress
+import json
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 import pytz
 
 # ---- Configuration via environment variables ----
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
 SITE_ID = int(os.environ.get("MATOMO_SITE_ID", "1"))
 MATOMO_TOKEN_AUTH = os.environ.get("MATOMO_TOKEN_AUTH", "")
-URLS_FILE = os.environ.get("URLS_FILE", "/config/urls.txt")
+URLS_FILE_ENV = os.environ.get("URLS_FILE")
+DEFAULT_URL_CANDIDATES = [
+    URLS_FILE_ENV,
+    "/app/data/urls.txt",
+    "/config/urls.txt",
+]
+FUNNEL_CONFIG_PATH = os.environ.get("FUNNEL_CONFIG_PATH", "/app/data/funnels.json")
 
 TARGET_VISITS_PER_DAY = float(os.environ.get("TARGET_VISITS_PER_DAY", "20000"))
 PAGEVIEWS_MIN = int(os.environ.get("PAGEVIEWS_MIN", "3"))
@@ -199,6 +207,117 @@ REFERRER_SOURCES = {
     # Note: Direct traffic (30%) is handled by not setting a referrer
 }
 
+SUPPORTED_FUNNEL_STEP_TYPES = {
+    'pageview',
+    'event',
+    'site_search',
+    'outlink',
+    'download',
+    'ecommerce',
+}
+
+
+def load_funnels_from_file(path: str) -> List[Dict[str, Any]]:
+    """Load funnel definitions from JSON file."""
+    if not path or not os.path.exists(path):
+        logging.info("Funnel config not found at %s", path)
+        return []
+
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            raw_data = json.load(handle)
+    except Exception as exc:
+        logging.error("Failed to load funnel config from %s: %s", path, exc)
+        return []
+
+    if not isinstance(raw_data, list):
+        logging.error("Funnel config must be a list of funnel objects")
+        return []
+
+    funnels: List[Dict[str, Any]] = []
+    for entry in raw_data:
+        try:
+            if not isinstance(entry, dict):
+                raise ValueError("Funnel entry must be an object")
+
+            enabled = bool(entry.get("enabled", True))
+            if not enabled:
+                continue
+
+            steps = entry.get("steps", [])
+            if not steps:
+                logging.warning("Skipping funnel %s: no steps defined", entry.get("name"))
+                continue
+
+            if steps[0].get("type") != "pageview":
+                logging.warning(
+                    "Skipping funnel %s: first step must be a pageview",
+                    entry.get("name"),
+                )
+                continue
+
+            normalized_steps: List[Dict[str, Any]] = []
+            for raw_step in steps:
+                if not isinstance(raw_step, dict):
+                    raise ValueError("Funnel step must be an object")
+                step_type = raw_step.get("type")
+                if step_type not in SUPPORTED_FUNNEL_STEP_TYPES:
+                    raise ValueError(f"Unsupported step type: {step_type}")
+
+                step = dict(raw_step)
+                step["type"] = step_type
+
+                min_delay = max(0.0, float(step.get("delay_seconds_min", 0.0)))
+                max_delay = float(step.get("delay_seconds_max", min_delay))
+                if max_delay < min_delay:
+                    max_delay = min_delay
+
+                step["delay_seconds_min"] = min_delay
+                step["delay_seconds_max"] = max_delay
+                normalized_steps.append(step)
+
+            funnel = {
+                "name": entry.get("name", "Unnamed Funnel"),
+                "description": entry.get("description"),
+                "probability": float(entry.get("probability", 0.0)),
+                "priority": int(entry.get("priority", 0)),
+                "enabled": True,
+                "exit_after_completion": bool(entry.get("exit_after_completion", True)),
+                "steps": normalized_steps,
+            }
+            funnel["probability"] = min(max(funnel["probability"], 0.0), 1.0)
+            funnels.append(funnel)
+        except Exception as exc:
+            logging.warning("Skipping invalid funnel entry: %s", exc)
+
+    funnels.sort(key=lambda f: f["priority"])
+    if funnels:
+        logging.info("Loaded %d active funnels from %s", len(funnels), path)
+    else:
+        logging.info("No active funnels found in %s", path)
+    return funnels
+
+
+def reload_funnels(path: Optional[str] = None) -> None:
+    """Reload funnel definitions into global cache."""
+    global FUNNELS
+    config_path = path or FUNNEL_CONFIG_PATH
+    FUNNELS = load_funnels_from_file(config_path)
+
+
+FUNNELS: List[Dict[str, Any]] = load_funnels_from_file(FUNNEL_CONFIG_PATH)
+
+
+def select_funnel() -> Optional[Dict[str, Any]]:
+    """Randomly select a funnel to execute for the next visit."""
+    if not FUNNELS:
+        return None
+
+    for funnel in FUNNELS:
+        if random.random() <= funnel.get("probability", 0.0):
+            return funnel
+    return None
+
 # Country distribution for visitor geolocation (based on typical web analytics patterns)
 COUNTRY_IP_RANGES = {
     'United States': {
@@ -374,6 +493,24 @@ ECOMMERCE_PRODUCTS = {
     ]
 }
 
+def resolve_urls_file() -> str:
+    """
+    Determine which URLs file to use for visit generation.
+
+    Priority:
+        1. Explicit URLS_FILE environment variable (if it exists on disk)
+        2. Shared data volume (/app/data/urls.txt) managed by Control UI
+        3. Embedded defaults in the image (/config/urls.txt)
+    """
+    for candidate in DEFAULT_URL_CANDIDATES:
+        if candidate and os.path.exists(candidate):
+            return candidate
+    raise RuntimeError(
+        "No URLs file found. Expected one of: "
+        f"{', '.join(path for path in DEFAULT_URL_CANDIDATES if path)}"
+    )
+
+
 def read_urls(path):
     urls = []
     with open(path, 'r', encoding='utf-8') as f:
@@ -383,7 +520,7 @@ def read_urls(path):
                 continue
             urls.append(s.split()[0])
     if not urls:
-        raise RuntimeError("No URLs found in URLS_FILE")
+        raise RuntimeError(f"No URLs found in URLs file: {path}")
     return urls
 
 def choose_referrer():
@@ -521,6 +658,175 @@ def generate_ecommerce_order():
     
     return order_id, items_json, revenue, subtotal, tax, shipping
 
+
+def _generate_funnel_order(step: Dict[str, Any]):
+    """Generate an ecommerce order for a funnel step."""
+    global ECOMMERCE_PROBABILITY
+    original_probability = ECOMMERCE_PROBABILITY
+    try:
+        ECOMMERCE_PROBABILITY = 1.0
+        order = generate_ecommerce_order()
+    finally:
+        ECOMMERCE_PROBABILITY = original_probability
+
+    if order is None:
+        raise RuntimeError("Unable to generate ecommerce order for funnel step")
+
+    order_id, items_json, revenue, subtotal, tax, shipping = order
+
+    if step.get("ecommerce_revenue") is not None:
+        revenue = float(step["ecommerce_revenue"])
+    if step.get("ecommerce_subtotal") is not None:
+        subtotal = float(step["ecommerce_subtotal"])
+    if step.get("ecommerce_tax") is not None:
+        tax = float(step["ecommerce_tax"])
+    if step.get("ecommerce_shipping") is not None:
+        shipping = float(step["ecommerce_shipping"])
+
+    return order_id, items_json, revenue, subtotal, tax, shipping
+
+
+async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str]) -> bool:
+    """
+    Execute a funnel sequence. Returns True if the visit should end after completion.
+    """
+    steps = funnel.get("steps", [])
+    if not steps:
+        return True
+
+    logging.info("Executing funnel '%s' (%d steps)", funnel.get("name"), len(steps))
+
+    visit_id = rand_hex(16)
+    user_agent = random.choice(USER_AGENTS)
+    referrer = choose_referrer()
+    country, visitor_ip = choose_country_and_ip()
+
+    # Prepare delay schedule
+    delays: List[float] = []
+    for step in steps:
+        min_delay = max(0.0, float(step.get("delay_seconds_min", 0.0)))
+        max_delay = float(step.get("delay_seconds_max", min_delay))
+        if max_delay < min_delay:
+            max_delay = min_delay
+        delays.append(random.uniform(min_delay, max_delay))
+
+    # Establish timeline so the final step ends near "now"
+    if TIMEZONE != "UTC":
+        try:
+            tz = pytz.timezone(TIMEZONE)
+            now_dt = datetime.now(tz)
+        except pytz.UnknownTimeZoneError:
+            logging.warning("Unknown timezone '%s', falling back to UTC", TIMEZONE)
+            tz = pytz.UTC
+            now_dt = datetime.utcnow().replace(tzinfo=tz)
+    else:
+        tz = pytz.UTC
+        now_dt = datetime.utcnow().replace(tzinfo=tz)
+
+    total_duration = sum(delays)
+    current_dt = now_dt - timedelta(seconds=total_duration)
+    last_page_url: Optional[str] = None
+
+    for index, step in enumerate(steps):
+        step_type = step.get("type", "pageview")
+        delay_after = delays[index]
+
+        page_url = step.get("url") or last_page_url or (random.choice(urls) if urls else MATOMO_URL)
+        action_name = step.get("action_name")
+
+        params: Dict[str, Any] = {
+            'idsite': SITE_ID,
+            'rec': 1,
+            '_id': visit_id,
+            'rand': random.randint(0, 2**31 - 1),
+            'cdt': current_dt.strftime('%Y-%m-%d %H:%M:%S'),
+            'url': page_url,
+        }
+
+        if action_name:
+            params['action_name'] = action_name
+
+        if visitor_ip:
+            params['cip'] = visitor_ip
+        if MATOMO_TOKEN_AUTH:
+            params['token_auth'] = MATOMO_TOKEN_AUTH
+
+        if index == 0:
+            params['new_visit'] = 1
+            if referrer:
+                params['urlref'] = referrer
+        elif last_page_url:
+            params['urlref'] = last_page_url
+
+        if step_type == 'pageview':
+            params.setdefault('action_name', f"Funnel: {funnel.get('name')} ({index+1}/{len(steps)})")
+            params['pv_id'] = rand_hex(6)
+            last_page_url = page_url
+
+        elif step_type == 'event':
+            params['e_c'] = step['event_category']
+            params['e_a'] = step['event_action']
+            params['e_n'] = step['event_name']
+            if step.get('event_value') is not None:
+                params['e_v'] = step['event_value']
+            params.setdefault('action_name', f"Funnel Event: {step['event_action']}")
+            last_page_url = page_url
+
+        elif step_type == 'site_search':
+            params['search'] = step['search_keyword']
+            if step.get('search_category'):
+                params['search_cat'] = step['search_category']
+            search_results = step.get('search_results')
+            if search_results is None:
+                search_results = random.randint(0, 25)
+            params['search_count'] = int(search_results)
+            params.setdefault('action_name', f"Funnel Search: {step['search_keyword']}")
+            last_page_url = page_url
+
+        elif step_type == 'outlink':
+            target_url = step.get('target_url') or page_url
+            if not target_url.startswith(('http://', 'https://')):
+                parsed = urllib.parse.urlparse(page_url)
+                base_url = f"{parsed.scheme}://{parsed.netloc}"
+                target_url = urllib.parse.urljoin(base_url, target_url)
+            params['link'] = target_url
+            params.setdefault('action_name', f"Funnel Outlink: {target_url}")
+
+        elif step_type == 'download':
+            target_url = step.get('target_url') or page_url
+            if not target_url.startswith(('http://', 'https://')):
+                parsed = urllib.parse.urlparse(page_url)
+                base_url = f"{parsed.scheme}://{parsed.netloc}"
+                target_url = urllib.parse.urljoin(base_url, target_url)
+            params['download'] = target_url
+            params.setdefault('action_name', f"Funnel Download: {target_url.split('/')[-1]}")
+
+        elif step_type == 'ecommerce':
+            order_id, items_json, revenue, subtotal, tax, shipping = _generate_funnel_order(step)
+            params.update({
+                'idgoal': '0',
+                'ec_id': order_id,
+                'ec_items': items_json,
+                'revenue': f"{revenue:.2f}",
+                'ec_st': f"{subtotal:.2f}",
+                'ec_tx': f"{tax:.2f}",
+            })
+            if ECOMMERCE_CURRENCY != "USD":
+                params['ec_currency'] = ECOMMERCE_CURRENCY
+            params.setdefault('action_name', f"Funnel Order: {order_id}")
+            last_page_url = page_url
+
+        headers = {'User-Agent': user_agent}
+
+        try:
+            await send_hit(session, params, headers)
+        except Exception as exc:  # pragma: no cover - network errors already handled in send_hit
+            logging.error("Error sending funnel step '%s': %s", step_type, exc)
+
+        current_dt += timedelta(seconds=delay_after)
+
+    return bool(funnel.get("exit_after_completion", True))
+
 # Logging configuration (can be adjusted with environment variable LOG_LEVEL)
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s %(levelname)s %(message)s')
@@ -571,6 +877,12 @@ async def send_hit(session, params, headers):
         return None
 
 async def visit(session, urls):
+    funnel = select_funnel()
+    if funnel:
+        exit_after = await execute_funnel(session, funnel, urls)
+        if exit_after:
+            return
+
     # One "visit" with 3–6 pageviews (configurable)
     num_pvs = random.randint(PAGEVIEWS_MIN, PAGEVIEWS_MAX)
     vid = rand_hex(16)  # visitor id
@@ -817,7 +1129,8 @@ def _handle_sig(*_):
     raise GracefulExit()
 
 async def main():
-    urls = read_urls(URLS_FILE)
+    urls_file = resolve_urls_file()
+    urls = read_urls(urls_file)
 
     # Target rate in visits/sec
     visits_per_sec = TARGET_VISITS_PER_DAY / 86400.0

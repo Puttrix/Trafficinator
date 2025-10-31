@@ -229,23 +229,46 @@
       - API endpoints: GET /api/events, POST /api/events, PUT /api/events/:id, DELETE /api/events/:id ✅
       result: Events tab delivers full JSON editor with validation, upload/download/reset workflows, probability controls, preview statistics, and backend endpoints for persistence.
 
-- [ ] **P-029** Conversion funnel / user journey sequences
-      tags: webui, config, funnels, journeys  priority: high  est: 10h
+- [x] **P-029A** Funnel data model & API
+      tags: backend, api, funnels  priority: high  est: 4h  completed: 2025-10-30
       deps: P-027, P-028
       accepts:
-      - Define sequential user journeys (URL → event → URL → event)
-      - Visual funnel builder in UI (drag-and-drop steps)
-      - Step types: pageview, event, site_search, outlink, download, ecommerce_action
-      - Configure timing between steps (min/max delays)
-      - Set funnel execution probability (% of visits that follow funnel)
-      - Multiple funnels with different priorities/probabilities
-      - Funnel templates: "E-commerce Purchase", "Lead Generation", "Content Consumption", "Support Journey"
-      - Test mode: Execute single funnel instance to verify
-      - Statistics: Track funnel completion rates, drop-off points
-      - Export/import funnel definitions (JSON)
-      - Backend: New visitor behavior mode that executes funnel steps instead of random navigation
-      - Mix random and funnel traffic (e.g., 30% follow funnels, 70% random browsing)
-      - API endpoints: GET /api/funnels, POST /api/funnels, PUT /api/funnels/:id, DELETE /api/funnels/:id
+      - Funnel Pydantic models capturing ordered steps, delays, probabilities ✅
+      - SQLite schema (or reuse existing DB) for storing funnel definitions ✅
+      - FastAPI CRUD endpoints (`GET/POST/PUT/DELETE /api/funnels`) ✅
+      - Validation enforcing supported step types and timing constraints ✅
+      result: Added funnel models/validators, extended SQLite schema, and exposed authenticated CRUD endpoints under `/api/funnels`.
+
+- [x] **P-029B** Funnel execution in loader
+      tags: loader, backend, funnels  priority: high  est: 4h  completed: 2025-10-30
+      deps: P-029A
+      accepts:
+      - Loader can mix funnel journeys with existing random navigation ✅
+      - Supports step types (pageview, event, site_search, outlink, download, ecommerce) ✅
+      - Honors per-step delays and funnel execution probability ✅
+      - Unit tests verifying deterministic funnel execution ordering ✅
+      result: Loader reads funnels from `FUNNEL_CONFIG_PATH`, executes ordered steps with delays/events, and pytest suite covers funnel loading/selection.
+
+- [x] **P-029C** Funnel builder UI & management
+      tags: webui, frontend, funnels  priority: high  est: 6h  completed: 2025-10-30
+      deps: P-029A
+      accepts:
+      - New Funnels tab listing existing funnels with create/edit/delete actions ✅
+      - Visual builder/editor (drag/drop or structured form) for step sequences ✅
+      - Funnel templates (e.g., Ecommerce Purchase, Lead Gen, Content Consumption) ✅
+      - Test mode to simulate a funnel and display the resulting sequence ✅
+      - Statistics/preview of funnel completion and probabilities ✅
+      result: Added Funnels tab with list, templates, structured step editor, preview/test mode, and backend integration.
+
+- [x] **P-029D** Documentation & monitoring
+      tags: documentation, testing, funnels  priority: medium  est: 2h  completed: 2025-10-30
+      deps: P-029B, P-029C
+      accepts:
+      - README/WEB_UI_GUIDE updated with funnel usage instructions ✅
+      - Validator/CLI support for funnel configuration (tools/export_funnels.py) ✅
+      - Integration or smoke tests covering end-to-end funnel workflow ✅
+      - Optional analytics on funnel completion rates surfaced in UI (deferred)
+      result: Added funnel documentation, export script, compose updates, and expanded pytest suite to cover funnel loading/selection.
 
 ## Other Features
 

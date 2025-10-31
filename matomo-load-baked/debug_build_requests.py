@@ -97,7 +97,9 @@ def simulate_visit(urls, force_outlink=False, force_download=False):
 
 def main():
     # Load a small list of URLs from config/urls.txt
-    urls_file = os.environ.get('URLS_FILE', '/config/urls.txt')
+    urls_file = os.environ.get('URLS_FILE') or '/app/data/urls.txt'
+    if not os.path.exists(urls_file):
+        urls_file = '/config/urls.txt'
     if not os.path.exists(urls_file):
         # fallback to a minimal set
         urls = ['https://example.test/']

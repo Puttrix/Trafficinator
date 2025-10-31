@@ -3,6 +3,8 @@ Trafficinator Control UI - FastAPI Application
 
 Main application entry point for the web-based control interface.
 """
+import json
+import logging
 import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
@@ -34,6 +36,12 @@ from models import (
     PresetCreateRequest,
     PresetUpdateRequest,
     PresetDeleteResponse,
+    FunnelListResponse,
+    FunnelResponse,
+    FunnelCreateRequest,
+    FunnelUpdateRequest,
+    FunnelDeleteResponse,
+    FunnelConfig,
 )
 from config_validator import (
     ConfigValidator,
@@ -43,6 +51,8 @@ from config_validator import (
 from auth import verify_api_key, is_auth_enabled
 from db import Database
 
+logger = logging.getLogger("trafficinator.control_ui")
+
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
@@ -50,6 +60,7 @@ limiter = Limiter(key_func=get_remote_address)
 docker_client = DockerClient()
 container_manager = ContainerManager(docker_client)
 config_database = Database(os.getenv("CONFIG_DB_PATH"))
+FUNNEL_CONFIG_PATH = Path(os.getenv("FUNNEL_CONFIG_PATH", "/app/data/funnels.json"))
 
 
 @asynccontextmanager
@@ -615,6 +626,228 @@ async def delete_preset(
         )
 
 
+# ============================================================================
+# Funnel Management
+# ============================================================================
+
+
+def serialize_funnel_record(record: Dict[str, Any]) -> FunnelResponse:
+    """Convert database funnel record into FunnelResponse."""
+    config = FunnelConfig(**record["config"])
+    return FunnelResponse(
+        id=record["id"],
+        name=record["name"],
+        description=record.get("description"),
+        config=config,
+        created_at=record["created_at"],
+        updated_at=record["updated_at"],
+    )
+
+
+def export_enabled_funnels() -> Dict[str, Any]:
+    """
+    Serialize enabled funnels to the shared JSON file for the loader.
+
+    Returns:
+        Dict containing the export path and funnel count.
+
+    Raises:
+        RuntimeError: If writing the export file fails.
+    """
+    try:
+        funnels = config_database.get_funnels_for_export(only_enabled=True)
+        FUNNEL_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with FUNNEL_CONFIG_PATH.open("w", encoding="utf-8") as handle:
+            json.dump(funnels, handle, indent=2)
+        logger.info(
+            "Exported %d funnel(s) to %s",
+            len(funnels),
+            FUNNEL_CONFIG_PATH,
+        )
+        return {"path": str(FUNNEL_CONFIG_PATH), "count": len(funnels)}
+    except Exception as exc:
+        raise RuntimeError(f"Failed to export funnels: {exc}") from exc
+
+
+@app.get("/api/funnels", response_model=FunnelListResponse)
+@limiter.limit("30/minute")
+async def list_funnels(
+    request: Request,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    List funnel definitions (metadata only).
+    """
+    try:
+        funnels = config_database.list_funnels()
+        return FunnelListResponse(funnels=funnels)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error listing funnels: {str(e)}"
+        )
+
+
+@app.post("/api/funnels", response_model=FunnelResponse, status_code=201)
+@limiter.limit("10/minute")
+async def create_funnel(
+    request: Request,
+    funnel: FunnelCreateRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Create a new funnel definition.
+    """
+    try:
+        config = FunnelConfig(
+            probability=funnel.probability,
+            priority=funnel.priority,
+            enabled=funnel.enabled,
+            exit_after_completion=funnel.exit_after_completion,
+            steps=funnel.steps,
+        )
+
+        created = config_database.create_funnel(
+            name=funnel.name,
+            description=funnel.description,
+            config=config.model_dump(),
+            probability=config.probability,
+            priority=config.priority,
+            enabled=config.enabled,
+        )
+        export_enabled_funnels()
+        return serialize_funnel_record(created)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Funnel name already exists"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating funnel: {str(e)}"
+        )
+
+
+@app.get("/api/funnels/{funnel_id}", response_model=FunnelResponse)
+@limiter.limit("30/minute")
+async def get_funnel(
+    request: Request,
+    funnel_id: int,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Retrieve a funnel definition.
+    """
+    try:
+        funnel = config_database.get_funnel(funnel_id)
+        if not funnel:
+            raise HTTPException(status_code=404, detail="Funnel not found")
+        return serialize_funnel_record(funnel)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving funnel: {str(e)}"
+        )
+
+
+@app.put("/api/funnels/{funnel_id}", response_model=FunnelResponse)
+@limiter.limit("10/minute")
+async def update_funnel(
+    request: Request,
+    funnel_id: int,
+    funnel: FunnelUpdateRequest,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Update an existing funnel definition.
+    """
+    try:
+        existing = config_database.get_funnel(funnel_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Funnel not found")
+
+        existing_config = FunnelConfig(**existing["config"])
+        config_dict = existing_config.model_dump()
+
+        if funnel.steps is not None:
+            config_dict["steps"] = [step.model_dump() for step in funnel.steps]
+        if funnel.exit_after_completion is not None:
+            config_dict["exit_after_completion"] = funnel.exit_after_completion
+        if funnel.priority is not None:
+            config_dict["priority"] = funnel.priority
+        if funnel.probability is not None:
+            config_dict["probability"] = funnel.probability
+        if funnel.enabled is not None:
+            config_dict["enabled"] = funnel.enabled
+
+        config_payload = None
+        if (
+            funnel.steps is not None
+            or funnel.exit_after_completion is not None
+            or funnel.priority is not None
+            or funnel.probability is not None
+            or funnel.enabled is not None
+        ):
+            config_payload = FunnelConfig(**config_dict)
+
+        updated = config_database.update_funnel(
+            funnel_id=funnel_id,
+            name=funnel.name,
+            description=funnel.description,
+            config=config_payload.model_dump() if config_payload else None,
+            probability=funnel.probability,
+            priority=funnel.priority,
+            enabled=funnel.enabled,
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Funnel not found")
+
+        export_enabled_funnels()
+        return serialize_funnel_record(updated)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Funnel name already exists"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating funnel: {str(e)}"
+        )
+
+
+@app.delete("/api/funnels/{funnel_id}", response_model=FunnelDeleteResponse)
+@limiter.limit("10/minute")
+async def delete_funnel(
+    request: Request,
+    funnel_id: int,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    Delete a funnel definition.
+    """
+    try:
+        deleted = config_database.delete_funnel(funnel_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Funnel not found")
+        export_enabled_funnels()
+        return FunnelDeleteResponse(
+            success=True,
+            deleted_id=funnel_id,
+            message="Funnel deleted successfully"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting funnel: {str(e)}"
+        )
 # =============================================================================
 # URL Management Endpoints
 # =============================================================================
