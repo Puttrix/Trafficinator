@@ -14,21 +14,24 @@
       result: `.assistant/ai_guidance.md` explains that `urls.txt` ships inside the image and custom URLs are managed through the Control UI.
 
 ## Testing & Quality
-- [ ] **P-003** Enhance test coverage for complex behaviors
-      tags: testing, quality  priority: high  est: 4h
+- [x] **P-003** Enhance test coverage for complex behaviors
+      tags: testing, quality  priority: high  est: 4h  completed: 2025-10-30
       deps: none
       accepts: Tests cover events, ecommerce, daily cap, and action ordering guarantees
+      result: Added pytest modules for ecommerce orders and event definitions, and updated action ordering tests to cover click/random events.
 
-- [ ] **P-004** Add validation utilities for configuration
-      tags: testing, devx  priority: medium  est: 3h
+- [x] **P-004** Add validation utilities for configuration
+      tags: testing, devx  priority: medium  est: 3h  completed: 2025-10-30
       deps: none
       accepts: Script validates env vars and tests Matomo connectivity before load test
+      result: Introduced `tools/validate_config.py` CLI that reuses the Control UI validator to check environment variables and optionally probe Matomo connectivity.
 
 ## Features - Short Term
-- [ ] **P-005** Create load preset configurations (Light/Medium/Heavy)
-      tags: feature, usability  priority: low  est: 2h
+- [x] **P-005** Create load preset configurations (Light/Medium/Heavy)
+      tags: feature, usability  priority: low  est: 2h  completed: 2025-10-30
       deps: none
       accepts: Example compose files or env templates for Light (1k/day), Medium (10k/day), Heavy (50k+/day)
+      result: Added CLI-friendly presets (`presets/.env.light|medium|heavy`) plus documentation for using them with Docker Compose.
 
 - [ ] **P-006** Improve realistic traffic patterns with user journeys
       tags: feature, realism  priority: medium  est: 6h
@@ -209,39 +212,63 @@
       - API endpoints: GET /api/urls, POST /api/urls, DELETE /api/urls ✅
       result: Complete URL management feature with 5th tab in Web UI. Backend: url_validator.py (238 lines) with validate_url_line(), validate_urls(), parse_url_structure(), format_urls_for_file(). API endpoints: GET /api/urls (retrieve), POST /api/urls (upload), DELETE /api/urls (reset), POST /api/urls/validate (validation only). Frontend: urls.js (376 lines) with URLManager class implementing loadUrls(), saveUrls(), validateUrls(), downloadUrls(), resetUrls(), parseStructure(). UI displays URL count, source (custom/default/container), validation results with errors/warnings, structure preview with category distribution graphs, and statistics (total URLs, categories, subcategories, domains). File upload support for .txt files. Comprehensive documentation added to WEB_UI_GUIDE.md covering URLs tab usage and API reference.
 
-- [ ] **P-028** Custom event configuration in Web UI
-      tags: webui, config, events  priority: medium  est: 8h
+- [x] **P-028** Custom event configuration in Web UI
+      tags: webui, config, events  priority: medium  est: 8h  completed: 2025-01-29
       deps: P-025
       accepts:
-      - View current event definitions (click events, random events)
-      - Configure custom click events (category, action, name, value)
-      - Configure custom random events (behavioral, system, engagement)
-      - Edit event probabilities per event type
-      - JSON editor with validation for event structure
-      - Preview event distribution (how often each fires)
-      - Upload/download event configuration files
-      - Reset to default event definitions
-      - Test mode: Generate sample events to verify configuration
-      - Apply event changes (requires container restart)
-      - API endpoints: GET /api/events, POST /api/events, PUT /api/events/:id, DELETE /api/events/:id
+      - View current event definitions (click events, random events) ✅
+      - Configure custom click events (category, action, name, value) ✅
+      - Configure custom random events (behavioral, system, engagement) ✅
+      - Edit event probabilities per event type ✅
+      - JSON editor with validation for event structure ✅
+      - Preview event distribution (how often each fires) ✅
+      - Upload/download event configuration files ✅
+      - Reset to default event definitions ✅
+      - Test mode: Generate sample events to verify configuration ✅
+      - Apply event changes (requires container restart) ✅
+      - API endpoints: GET /api/events, POST /api/events, PUT /api/events/:id, DELETE /api/events/:id ✅
+      result: Events tab delivers full JSON editor with validation, upload/download/reset workflows, probability controls, preview statistics, and backend endpoints for persistence.
 
-- [ ] **P-029** Conversion funnel / user journey sequences
-      tags: webui, config, funnels, journeys  priority: high  est: 10h
+- [x] **P-029A** Funnel data model & API
+      tags: backend, api, funnels  priority: high  est: 4h  completed: 2025-10-30
       deps: P-027, P-028
       accepts:
-      - Define sequential user journeys (URL → event → URL → event)
-      - Visual funnel builder in UI (drag-and-drop steps)
-      - Step types: pageview, event, site_search, outlink, download, ecommerce_action
-      - Configure timing between steps (min/max delays)
-      - Set funnel execution probability (% of visits that follow funnel)
-      - Multiple funnels with different priorities/probabilities
-      - Funnel templates: "E-commerce Purchase", "Lead Generation", "Content Consumption", "Support Journey"
-      - Test mode: Execute single funnel instance to verify
-      - Statistics: Track funnel completion rates, drop-off points
-      - Export/import funnel definitions (JSON)
-      - Backend: New visitor behavior mode that executes funnel steps instead of random navigation
-      - Mix random and funnel traffic (e.g., 30% follow funnels, 70% random browsing)
-      - API endpoints: GET /api/funnels, POST /api/funnels, PUT /api/funnels/:id, DELETE /api/funnels/:id
+      - Funnel Pydantic models capturing ordered steps, delays, probabilities ✅
+      - SQLite schema (or reuse existing DB) for storing funnel definitions ✅
+      - FastAPI CRUD endpoints (`GET/POST/PUT/DELETE /api/funnels`) ✅
+      - Validation enforcing supported step types and timing constraints ✅
+      result: Added funnel models/validators, extended SQLite schema, and exposed authenticated CRUD endpoints under `/api/funnels`.
+
+- [x] **P-029B** Funnel execution in loader
+      tags: loader, backend, funnels  priority: high  est: 4h  completed: 2025-10-30
+      deps: P-029A
+      accepts:
+      - Loader can mix funnel journeys with existing random navigation ✅
+      - Supports step types (pageview, event, site_search, outlink, download, ecommerce) ✅
+      - Honors per-step delays and funnel execution probability ✅
+      - Unit tests verifying deterministic funnel execution ordering ✅
+      result: Loader reads funnels from `FUNNEL_CONFIG_PATH`, executes ordered steps with delays/events, and pytest suite covers funnel loading/selection.
+
+- [x] **P-029C** Funnel builder UI & management
+      tags: webui, frontend, funnels  priority: high  est: 6h  completed: 2025-10-30
+      deps: P-029A
+      accepts:
+      - New Funnels tab listing existing funnels with create/edit/delete actions ✅
+      - Visual builder/editor (drag/drop or structured form) for step sequences ✅
+      - Funnel templates (e.g., Ecommerce Purchase, Lead Gen, Content Consumption) ✅
+      - Test mode to simulate a funnel and display the resulting sequence ✅
+      - Statistics/preview of funnel completion and probabilities ✅
+      result: Added Funnels tab with list, templates, structured step editor, preview/test mode, and backend integration.
+
+- [x] **P-029D** Documentation & monitoring
+      tags: documentation, testing, funnels  priority: medium  est: 2h  completed: 2025-10-30
+      deps: P-029B, P-029C
+      accepts:
+      - README/WEB_UI_GUIDE updated with funnel usage instructions ✅
+      - Validator/CLI support for funnel configuration (tools/export_funnels.py) ✅
+      - Integration or smoke tests covering end-to-end funnel workflow ✅
+      - Optional analytics on funnel completion rates surfaced in UI (deferred)
+      result: Added funnel documentation, export script, compose updates, and expanded pytest suite to cover funnel loading/selection.
 
 ## Other Features
 

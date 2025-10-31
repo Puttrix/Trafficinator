@@ -23,9 +23,10 @@ It helps you **stress test Matomo’s frontend performance** when handling large
   - **Site search simulation** with configurable probability and realistic search terms  
   - **Outlinks and downloads tracking** with external URLs and file downloads  
   - **Custom events tracking** with click events and random user interactions  
-  - **Ecommerce orders simulation** with realistic product catalog and purchase flows
-  - **Extended visit durations** of 1-8 minutes for realistic engagement metrics
-  - **Traffic source diversification** with search engines, social media, referrals, and direct traffic
+  - **Conversion funnels** with configurable multi-step journeys and delays  
+  - **Ecommerce orders simulation** with realistic product catalog and purchase flows  
+  - **Extended visit durations** of 1-8 minutes for realistic engagement metrics  
+  - **Traffic source diversification** with search engines, social media, referrals, and direct traffic  
   - **Global visitor simulation** with realistic country distribution using authentic IP ranges  
 
 - **High-volume traffic**  
@@ -181,6 +182,54 @@ environment:
   ECOMMERCE_CURRENCY: "USD"           # Currency code for ecommerce orders (ISO 4217)
   TIMEZONE: "UTC"                     # Timezone for visit timestamps (e.g., "America/New_York")
 ```
+
+### Validate configuration before running
+
+Use the CLI validator to confirm your environment variables (and optional Matomo connectivity) are correct before starting a load test:
+
+```bash
+python tools/validate_config.py --env-file path/to/.env
+# or rely on current environment variables
+python tools/validate_config.py
+```
+
+Add `--skip-connection` to omit the connectivity probe.
+
+### Preset environment files
+
+Prefer the CLI? Use the ready-made presets in `presets/`:
+
+```bash
+# Light workload (~1k visits/day)
+docker compose --env-file presets/.env.light up -d
+
+# Medium workload (~10k visits/day)
+docker compose --env-file presets/.env.medium up -d
+
+# Heavy workload (~50k+ visits/day)
+docker compose --env-file presets/.env.heavy up -d
+```
+
+Each preset mirrors the Control UI presets; edit `MATOMO_URL`, `MATOMO_SITE_ID`, and other values as needed. See `presets/README.md` for details.
+
+### Funnels (user journeys)
+
+Trafficinator supports orchestrated conversion funnels that blend structured journeys with the existing random browsing model.
+
+1. **Design** funnels in the Web UI (`Funnels` tab) – choose a template, tweak steps (pageviews, events, site search, outlinks, downloads, ecommerce), and save.
+2. **Sync** funnels to the loader: the Control UI now writes `/app/data/funnels.json` automatically whenever you create, edit, or delete funnels. Prefer headless workflows? Export manually with:
+   ```bash
+   python tools/export_funnels.py \
+     --api-base http://localhost:8000 \
+     --api-key change-me-in-production \
+     --output control-ui/data/funnels.json
+   ```
+3. **Restart** the generator so the loader reads the updated JSON:
+   ```bash
+   docker compose -f docker-compose.webui.yml restart matomo-loadgen
+   ```
+
+The loader looks for funnels at `FUNNEL_CONFIG_PATH` (default `/app/data/funnels.json`). The default compose file mounts `./control-ui/data` into both containers so exports are immediately available.
 
 ### URL Structure  
 The load generator uses a **3-level hierarchical URL structure** with **2,000 pre-built URLs embedded in the image**:

@@ -185,6 +185,35 @@ class API {
             method: 'DELETE'
         });
     }
+
+    // Funnel Management
+    async getFunnels() {
+        return this.request('/api/funnels');
+    }
+
+    async getFunnel(id) {
+        return this.request(`/api/funnels/${id}`);
+    }
+
+    async createFunnel(payload) {
+        return this.request('/api/funnels', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    async updateFunnel(id, payload) {
+        return this.request(`/api/funnels/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    async deleteFunnel(id) {
+        return this.request(`/api/funnels/${id}`, {
+            method: 'DELETE'
+        });
+    }
 }
 
 // Create global API instance
