@@ -152,3 +152,7 @@
 - tool: apply_patch (control-ui/static/index.html)
 - result: Updated footer “Documentation” link to the public Trafficinator repository.
 - artifacts: none
+
+- tool: apply_patch (control-ui/static/index.html)
+- result: Made the Trafficinator logo always visible by removing the mobile-only `hidden` class.
+- artifacts: none
