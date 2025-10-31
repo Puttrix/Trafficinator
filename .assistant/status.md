@@ -45,6 +45,7 @@
 - Delivered funnel data model and CRUD API groundwork (P-029A) ahead of loader/UI implementation.
 - Loader now executes funnel journeys with probability/priority rules and tests (P-029B).
 - Built Funnels UI tab with templates, editor, and preview to manage journeys (P-029C).
+- Documented funnel workflow, added export CLI, and updated compose sharing (P-029D).
 
 ---
 

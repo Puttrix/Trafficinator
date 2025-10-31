@@ -260,14 +260,15 @@
       - Statistics/preview of funnel completion and probabilities ✅
       result: Added Funnels tab with list, templates, structured step editor, preview/test mode, and backend integration.
 
-- [ ] **P-029D** Documentation & monitoring
-      tags: documentation, testing, funnels  priority: medium  est: 2h
+- [x] **P-029D** Documentation & monitoring
+      tags: documentation, testing, funnels  priority: medium  est: 2h  completed: 2025-10-30
       deps: P-029B, P-029C
       accepts:
-      - README/WEB_UI_GUIDE updated with funnel usage instructions
-      - Validator/CLI support for funnel configuration if applicable
-      - Integration or smoke tests covering end-to-end funnel workflow
-      - Optional analytics on funnel completion rates surfaced in UI
+      - README/WEB_UI_GUIDE updated with funnel usage instructions ✅
+      - Validator/CLI support for funnel configuration (tools/export_funnels.py) ✅
+      - Integration or smoke tests covering end-to-end funnel workflow ✅
+      - Optional analytics on funnel completion rates surfaced in UI (deferred)
+      result: Added funnel documentation, export script, compose updates, and expanded pytest suite to cover funnel loading/selection.
 
 ## Other Features
 

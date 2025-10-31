@@ -10,6 +10,13 @@ Complete guide for using the Trafficinator Web Control Interface.
 - [Installation](#installation)
 - [Getting Started](#getting-started)
 - [User Interface](#user-interface)
+  - [Status Tab](#user-interface)
+  - [Config Tab](#user-interface)
+  - [Presets Tab](#user-interface)
+  - [Logs Tab](#4-logs-tab)
+  - [URLs Tab](#5-urls-tab)
+  - [Events Tab](#6-events-tab)
+  - [Funnels Tab](#7-funnels-tab)
 - [API Reference](#api-reference)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
@@ -285,6 +292,39 @@ The load generator checks three locations in order:
 3. Embedded `config/urls.txt` - Default URLs baked into container
 
 **Note:** After uploading custom URLs or resetting to defaults, you must restart the container for changes to take effect.
+
+---
+
+### 6. Events Tab
+
+**Purpose:** Manage Matomo events (clicks, random interactions) generated during load tests.
+
+**Highlights:**
+- JSON editor with validation and probability controls
+- Upload/download support for sharing event configurations
+- Inline statistics preview for quick sanity checks
+- Reset to defaults when you need a clean slate
+
+> **Note:** Saving changes requires restarting the generator because events are loaded at startup.
+
+### 7. Funnels Tab
+
+**Purpose:** Build deterministic user journeys that complement random browsing.
+
+**Workflow:**
+1. **Create or edit** a funnel using the structured step editor (pageviews, events, site search, outlinks, downloads, ecommerce).
+2. **Preview** the journey to validate ordering and delays.
+3. **Export** funnels for the loader:
+   ```bash
+   python tools/export_funnels.py --api-base http://localhost:8000 --api-key <key> --output control-ui/data/funnels.json
+   docker compose -f docker-compose.webui.yml restart matomo-loadgen
+   ```
+
+**Tips:**
+- Probability controls how often a funnel executes; priority resolves ordering when multiple funnels match.
+- “Exit after completion” switches visitors back to random browsing once the funnel finishes.
+
+Use the built-in templates (Ecommerce, Lead Generation, Content Discovery) as a starting point for your own campaigns.
 
 ---
 

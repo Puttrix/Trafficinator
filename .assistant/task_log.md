@@ -88,3 +88,27 @@
 - tool: apply_patch (control-ui/static/index.html, control-ui/static/js/api.js, control-ui/static/js/app.js, control-ui/static/js/funnels.js)
 - result: Built Funnels tab with templates, structured step editor, preview/test mode, and API integration (P-029C).
 - artifacts: control-ui/static/js/funnels.js
+
+- tool: apply_patch (README.md, WEB_UI_GUIDE.md, docker-compose.webui.yml, tools/export_funnels.py)
+- result: Documented funnel workflow, added export CLI, updated compose to share funnel data, and satisfied P-029D documentation requirements.
+- artifacts: tools/export_funnels.py
+
+- tool: shell (`sed -n '1,160p' control-ui/static/js/app.js`; `git diff HEAD -- control-ui/static/js/funnels.js`)
+- result: Confirmed FunnelsManager is still referenced in `app.js` but the dedicated `funnels.js` module was removed, leaving the UI without event bindings.
+- artifacts: none
+
+- tool: shell (`git show HEAD:control-ui/static/js/funnels.js > control-ui/static/js/funnels.js`)
+- result: Restored the missing `funnels.js` bundle so the Funnels tab can register its event handlers again.
+- artifacts: control-ui/static/js/funnels.js
+
+- tool: shell (`docker compose -f docker-compose.webui.yml build control-ui`; `docker compose -f docker-compose.webui.yml up -d control-ui`; `docker compose -f docker-compose.webui.yml logs control-ui --tail 20`)
+- result: Rebuilt and restarted the Control UI container; verified clean startup with static assets mounted and API responding.
+- artifacts: none
+
+- tool: shell (`curl http://localhost:8000/static/js/funnels.js`)
+- result: Confirmed the running Control UI serves the restored `funnels.js` asset.
+- artifacts: /tmp/funnels.js
+
+- tool: shell (`docker compose -f docker-compose.webui.yml ps`; `docker ps -a --filter name=matomo-loadgen`; `docker rm matomo-loadgen`; `docker compose -f docker-compose.webui.yml up -d matomo-loadgen`; `docker inspect matomo-loadgen --format '{{json .State.Health}}'`; `docker exec matomo-loadgen env | grep MATOMO`)
+- result: Found the load generator container stuck in Created state blocking Compose, removed it, restarted the service, and confirmed it now runs (healthcheck failing due to placeholder MATOMO_URL).
+- artifacts: none

@@ -31,7 +31,10 @@ services:
       ECOMMERCE_ORDER_VALUE_MAX: "${ECOMMERCE_ORDER_VALUE_MAX:-299.99}"
       ECOMMERCE_CURRENCY: "${ECOMMERCE_CURRENCY:-USD}"
       TIMEZONE: "${TIMEZONE:-UTC}"
+      FUNNEL_CONFIG_PATH: "${FUNNEL_CONFIG_PATH:-/app/data/funnels.json}"
     restart: unless-stopped
+    volumes:
+      - ./control-ui/data:/app/data
     networks:
       - trafficinator
 
