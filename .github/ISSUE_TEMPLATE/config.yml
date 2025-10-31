@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security reports
+    url: https://github.com/Puttrix/Trafficinator/security/policy
+    about: Please review the security policy for guidance on reporting vulnerabilities.
