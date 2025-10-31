@@ -217,7 +217,7 @@ Each preset mirrors the Control UI presets; edit `MATOMO_URL`, `MATOMO_SITE_ID`,
 Trafficinator supports orchestrated conversion funnels that blend structured journeys with the existing random browsing model.
 
 1. **Design** funnels in the Web UI (`Funnels` tab) – choose a template, tweak steps (pageviews, events, site search, outlinks, downloads, ecommerce), and save.
-2. **Export** funnels to the loader:
+2. **Sync** funnels to the loader: the Control UI now writes `/app/data/funnels.json` automatically whenever you create, edit, or delete funnels. Prefer headless workflows? Export manually with:
    ```bash
    python tools/export_funnels.py \
      --api-base http://localhost:8000 \

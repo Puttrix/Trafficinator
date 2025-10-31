@@ -314,11 +314,7 @@ The load generator checks three locations in order:
 **Workflow:**
 1. **Create or edit** a funnel using the structured step editor (pageviews, events, site search, outlinks, downloads, ecommerce).
 2. **Preview** the journey to validate ordering and delays.
-3. **Export** funnels for the loader:
-   ```bash
-   python tools/export_funnels.py --api-base http://localhost:8000 --api-key <key> --output control-ui/data/funnels.json
-   docker compose -f docker-compose.webui.yml restart matomo-loadgen
-   ```
+3. **Sync & restart:** Saving a funnel now writes `/app/data/funnels.json` automatically, so the loader picks it up after you restart it (`docker compose -f docker-compose.webui.yml restart matomo-loadgen`). Prefer CLI automation? Use `python tools/export_funnels.py --api-base … --output control-ui/data/funnels.json`.
 
 **Tips:**
 - Probability controls how often a funnel executes; priority resolves ordering when multiple funnels match.

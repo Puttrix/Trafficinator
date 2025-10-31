@@ -3,6 +3,8 @@ Trafficinator Control UI - FastAPI Application
 
 Main application entry point for the web-based control interface.
 """
+import json
+import logging
 import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
@@ -49,6 +51,8 @@ from config_validator import (
 from auth import verify_api_key, is_auth_enabled
 from db import Database
 
+logger = logging.getLogger("trafficinator.control_ui")
+
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
@@ -56,6 +60,7 @@ limiter = Limiter(key_func=get_remote_address)
 docker_client = DockerClient()
 container_manager = ContainerManager(docker_client)
 config_database = Database(os.getenv("CONFIG_DB_PATH"))
+FUNNEL_CONFIG_PATH = Path(os.getenv("FUNNEL_CONFIG_PATH", "/app/data/funnels.json"))
 
 
 @asynccontextmanager
@@ -639,6 +644,31 @@ def serialize_funnel_record(record: Dict[str, Any]) -> FunnelResponse:
     )
 
 
+def export_enabled_funnels() -> Dict[str, Any]:
+    """
+    Serialize enabled funnels to the shared JSON file for the loader.
+
+    Returns:
+        Dict containing the export path and funnel count.
+
+    Raises:
+        RuntimeError: If writing the export file fails.
+    """
+    try:
+        funnels = config_database.get_funnels_for_export(only_enabled=True)
+        FUNNEL_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with FUNNEL_CONFIG_PATH.open("w", encoding="utf-8") as handle:
+            json.dump(funnels, handle, indent=2)
+        logger.info(
+            "Exported %d funnel(s) to %s",
+            len(funnels),
+            FUNNEL_CONFIG_PATH,
+        )
+        return {"path": str(FUNNEL_CONFIG_PATH), "count": len(funnels)}
+    except Exception as exc:
+        raise RuntimeError(f"Failed to export funnels: {exc}") from exc
+
+
 @app.get("/api/funnels", response_model=FunnelListResponse)
 @limiter.limit("30/minute")
 async def list_funnels(
@@ -685,6 +715,7 @@ async def create_funnel(
             priority=config.priority,
             enabled=config.enabled,
         )
+        export_enabled_funnels()
         return serialize_funnel_record(created)
     except IntegrityError:
         raise HTTPException(
@@ -774,6 +805,7 @@ async def update_funnel(
         if not updated:
             raise HTTPException(status_code=404, detail="Funnel not found")
 
+        export_enabled_funnels()
         return serialize_funnel_record(updated)
     except IntegrityError:
         raise HTTPException(
@@ -803,6 +835,7 @@ async def delete_funnel(
         deleted = config_database.delete_funnel(funnel_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Funnel not found")
+        export_enabled_funnels()
         return FunnelDeleteResponse(
             success=True,
             deleted_id=funnel_id,

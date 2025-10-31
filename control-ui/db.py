@@ -233,6 +233,46 @@ class Database:
                 )
             return funnels
 
+    def get_funnels_for_export(self, only_enabled: bool = True) -> List[Dict[str, Any]]:
+        """
+        Retrieve funnels including full configuration payload for export.
+
+        Args:
+            only_enabled: When True, filter to funnels marked as enabled.
+
+        Returns:
+            List of funnel dictionaries ready to serialize to JSON.
+        """
+        query = """
+            SELECT name, description, probability, priority, enabled, config_json, updated_at
+            FROM funnels
+        """
+        if only_enabled:
+            query += " WHERE enabled = 1"
+        query += " ORDER BY priority ASC, updated_at DESC"
+
+        funnels: List[Dict[str, Any]] = []
+        with self.get_connection() as conn:
+            cursor = conn.execute(query)
+            for row in cursor.fetchall():
+                config = json.loads(row["config_json"])
+                steps = config.get("steps", [])
+                if not steps:
+                    continue
+
+                funnel = {
+                    "name": row["name"],
+                    "description": row["description"],
+                    "probability": row["probability"],
+                    "priority": row["priority"],
+                    "enabled": bool(row["enabled"]),
+                    "exit_after_completion": bool(config.get("exit_after_completion", True)),
+                    "steps": steps,
+                }
+                funnels.append(funnel)
+
+        return funnels
+
     def get_funnel(self, funnel_id: int) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.execute(

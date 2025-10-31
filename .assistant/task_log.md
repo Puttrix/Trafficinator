@@ -124,3 +124,19 @@
 - tool: shell (`docker compose -f docker-compose.webui.yml build matomo-loadgen`; `docker rm -f matomo-loadgen`; `docker compose -f docker-compose.webui.yml up -d matomo-loadgen`; `docker exec matomo-loadgen env | grep URL`; `docker exec matomo-loadgen head -n 5 /app/data/urls.txt`)
 - result: Rebuilt and redeployed load generator with updated loader/env; confirmed container now reads `/app/data/urls.txt` (shared with Control UI) containing custom URLs.
 - artifacts: none
+
+- tool: apply_patch (control-ui/db.py; control-ui/app.py)
+- result: Added automatic funnel export support—CRUD operations now write enabled funnels to `/app/data/funnels.json` using shared volume.
+- artifacts: control-ui/data/funnels.json (generated at runtime)
+
+- tool: apply_patch (README.md; WEB_UI_GUIDE.md)
+- result: Documentation now reflects automatic funnel syncing and optional CLI export workflow.
+- artifacts: none
+
+- tool: shell (`python3 -m pytest matomo-load-baked/tests`)
+- result: Regression suite still passes after funnel export changes (13 tests).
+- artifacts: none
+
+- tool: shell (`docker compose -f docker-compose.webui.yml build control-ui`; `docker compose -f docker-compose.webui.yml up -d --no-deps control-ui`; `curl -s -X PUT .../api/funnels/2`; `docker compose -f docker-compose.webui.yml restart matomo-loadgen`)
+- result: Rebuilt/restarted Control UI, verified API update triggers funnel export (funnels.json present), and recycled load generator to load the new funnel definitions.
+- artifacts: control-ui/data/funnels.json
