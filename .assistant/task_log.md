@@ -112,3 +112,15 @@
 - tool: shell (`docker compose -f docker-compose.webui.yml ps`; `docker ps -a --filter name=matomo-loadgen`; `docker rm matomo-loadgen`; `docker compose -f docker-compose.webui.yml up -d matomo-loadgen`; `docker inspect matomo-loadgen --format '{{json .State.Health}}'`; `docker exec matomo-loadgen env | grep MATOMO`)
 - result: Found the load generator container stuck in Created state blocking Compose, removed it, restarted the service, and confirmed it now runs (healthcheck failing due to placeholder MATOMO_URL).
 - artifacts: none
+
+- tool: apply_patch (matomo-load-baked/loader.py; matomo-load-baked/debug_build_requests.py; docker-compose.webui.yml)
+- result: Loader now resolves URLs from `/app/data/urls.txt` when present (falling back to defaults) and web UI compose sets `URLS_FILE` to the shared data volume so Control UI edits take effect.
+- artifacts: none
+
+- tool: shell (`python3 -m pytest matomo-load-baked/tests`)
+- result: Regression suite still passes after loader URL resolution changes.
+- artifacts: none
+
+- tool: shell (`docker compose -f docker-compose.webui.yml build matomo-loadgen`; `docker rm -f matomo-loadgen`; `docker compose -f docker-compose.webui.yml up -d matomo-loadgen`; `docker exec matomo-loadgen env | grep URL`; `docker exec matomo-loadgen head -n 5 /app/data/urls.txt`)
+- result: Rebuilt and redeployed load generator with updated loader/env; confirmed container now reads `/app/data/urls.txt` (shared with Control UI) containing custom URLs.
+- artifacts: none

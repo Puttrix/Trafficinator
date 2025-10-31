@@ -17,7 +17,12 @@ import pytz
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
 SITE_ID = int(os.environ.get("MATOMO_SITE_ID", "1"))
 MATOMO_TOKEN_AUTH = os.environ.get("MATOMO_TOKEN_AUTH", "")
-URLS_FILE = os.environ.get("URLS_FILE", "/config/urls.txt")
+URLS_FILE_ENV = os.environ.get("URLS_FILE")
+DEFAULT_URL_CANDIDATES = [
+    URLS_FILE_ENV,
+    "/app/data/urls.txt",
+    "/config/urls.txt",
+]
 FUNNEL_CONFIG_PATH = os.environ.get("FUNNEL_CONFIG_PATH", "/app/data/funnels.json")
 
 TARGET_VISITS_PER_DAY = float(os.environ.get("TARGET_VISITS_PER_DAY", "20000"))
@@ -488,6 +493,24 @@ ECOMMERCE_PRODUCTS = {
     ]
 }
 
+def resolve_urls_file() -> str:
+    """
+    Determine which URLs file to use for visit generation.
+
+    Priority:
+        1. Explicit URLS_FILE environment variable (if it exists on disk)
+        2. Shared data volume (/app/data/urls.txt) managed by Control UI
+        3. Embedded defaults in the image (/config/urls.txt)
+    """
+    for candidate in DEFAULT_URL_CANDIDATES:
+        if candidate and os.path.exists(candidate):
+            return candidate
+    raise RuntimeError(
+        "No URLs file found. Expected one of: "
+        f"{', '.join(path for path in DEFAULT_URL_CANDIDATES if path)}"
+    )
+
+
 def read_urls(path):
     urls = []
     with open(path, 'r', encoding='utf-8') as f:
@@ -497,7 +520,7 @@ def read_urls(path):
                 continue
             urls.append(s.split()[0])
     if not urls:
-        raise RuntimeError("No URLs found in URLS_FILE")
+        raise RuntimeError(f"No URLs found in URLs file: {path}")
     return urls
 
 def choose_referrer():
@@ -1106,7 +1129,8 @@ def _handle_sig(*_):
     raise GracefulExit()
 
 async def main():
-    urls = read_urls(URLS_FILE)
+    urls_file = resolve_urls_file()
+    urls = read_urls(urls_file)
 
     # Target rate in visits/sec
     visits_per_sec = TARGET_VISITS_PER_DAY / 86400.0

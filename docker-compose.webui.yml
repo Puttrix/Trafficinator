@@ -32,6 +32,7 @@ services:
       ECOMMERCE_CURRENCY: "${ECOMMERCE_CURRENCY:-USD}"
       TIMEZONE: "${TIMEZONE:-UTC}"
       FUNNEL_CONFIG_PATH: "${FUNNEL_CONFIG_PATH:-/app/data/funnels.json}"
+      URLS_FILE: "${URLS_FILE:-/app/data/urls.txt}"
     restart: unless-stopped
     volumes:
       - ./control-ui/data:/app/data
