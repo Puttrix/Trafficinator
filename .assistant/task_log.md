@@ -140,3 +140,15 @@
 - tool: shell (`docker compose -f docker-compose.webui.yml build control-ui`; `docker compose -f docker-compose.webui.yml up -d --no-deps control-ui`; `curl -s -X PUT .../api/funnels/2`; `docker compose -f docker-compose.webui.yml restart matomo-loadgen`)
 - result: Rebuilt/restarted Control UI, verified API update triggers funnel export (funnels.json present), and recycled load generator to load the new funnel definitions.
 - artifacts: control-ui/data/funnels.json
+
+- tool: shell (`mkdir -p control-ui/static/img && cp logo.png control-ui/static/img/logo.png`)
+- result: Added Trafficinator logo to the static asset directory for use in the UI header.
+- artifacts: control-ui/static/img/logo.png
+
+- tool: apply_patch (control-ui/static/index.html)
+- result: Rebranded header/title to “Trafficinator” and displayed the logo in the Control UI.
+- artifacts: none
+
+- tool: apply_patch (control-ui/static/index.html)
+- result: Updated footer “Documentation” link to the public Trafficinator repository.
+- artifacts: none
