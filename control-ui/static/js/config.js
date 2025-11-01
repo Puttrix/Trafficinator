@@ -255,8 +255,8 @@ class ConfigForm {
                 
                 // Include non-target fields
                 for (const [key, value] of formData.entries()) {
-                    // Skip single-target fields
-                    if (['matomo_url', 'matomo_site_id', 'matomo_token_auth'].includes(key)) {
+                    // Skip single-target fields and distribution_strategy (already in multiTargetConfig)
+                    if (['matomo_url', 'matomo_site_id', 'matomo_token_auth', 'distribution_strategy'].includes(key)) {
                         continue;
                     }
                     
@@ -301,6 +301,17 @@ class ConfigForm {
 
     // Validate entire configuration
     async validateConfig() {
+        // Client-side validation for multi-target mode
+        if (this.multiTargetManager && this.multiTargetManager.isMultiTargetMode) {
+            const clientErrors = this.validateMultiTargetConfig();
+            if (clientErrors.length > 0) {
+                clientErrors.forEach(error => {
+                    UI.showAlert(error, 'error');
+                });
+                return false;
+            }
+        }
+
         const config = this.getFormData();
         
         try {
@@ -343,11 +354,65 @@ class ConfigForm {
         }
     }
 
+    // Validate multi-target configuration (client-side)
+    validateMultiTargetConfig() {
+        const errors = [];
+        
+        if (!this.multiTargetManager || !this.multiTargetManager.targets || this.multiTargetManager.targets.length === 0) {
+            errors.push('At least one target is required in multi-target mode');
+            return errors;
+        }
+
+        const enabledTargets = this.multiTargetManager.targets.filter(t => t.enabled);
+        if (enabledTargets.length === 0) {
+            errors.push('At least one target must be enabled');
+            return errors;
+        }
+
+        // Validate each target
+        this.multiTargetManager.targets.forEach((target, index) => {
+            if (!target.name || target.name.trim() === '') {
+                errors.push(`Target ${index + 1}: Name is required`);
+            }
+            if (!target.url || target.url.trim() === '') {
+                errors.push(`Target ${index + 1}: URL is required`);
+            } else {
+                try {
+                    const url = new URL(target.url);
+                    if (!['http:', 'https:'].includes(url.protocol)) {
+                        errors.push(`Target ${index + 1}: URL must use http:// or https://`);
+                    }
+                } catch {
+                    errors.push(`Target ${index + 1}: Invalid URL format`);
+                }
+            }
+            if (!target.site_id || target.site_id < 1) {
+                errors.push(`Target ${index + 1}: Site ID must be at least 1`);
+            }
+        });
+
+        // Check for duplicate names
+        const names = this.multiTargetManager.targets.map(t => t.name.trim().toLowerCase());
+        const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
+        if (duplicates.length > 0) {
+            errors.push('Target names must be unique');
+        }
+
+        return errors;
+    }
+
     // Validate single field
     validateField(input) {
         const name = input.name;
         const value = input.value;
         let error = null;
+        
+        // Skip validation of single-target fields when in multi-target mode
+        if (this.multiTargetManager && this.multiTargetManager.isMultiTargetMode) {
+            if (['matomo_url', 'matomo_site_id', 'matomo_token_auth'].includes(name)) {
+                return true; // Skip validation for hidden single-target fields
+            }
+        }
         
         // Required fields
         if (input.hasAttribute('required') && (!value || value.trim() === '')) {
