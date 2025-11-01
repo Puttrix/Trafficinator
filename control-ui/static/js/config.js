@@ -323,6 +323,7 @@ class ConfigForm {
         try {
             UI.showLoading('Validating configuration...');
             const result = await api.validateConfig(config);
+            console.log('API validation result:', result);
             UI.hideLoading();
             
             // Clear previous errors
@@ -331,6 +332,7 @@ class ConfigForm {
             
             // Display errors
             if (result.errors && result.errors.length > 0) {
+                console.log('Displaying errors:', result.errors);
                 result.errors.forEach(error => {
                     this.showFieldError(error.field, error.message);
                     this.validationErrors[error.field] = error.message;

@@ -139,37 +139,86 @@ class ConfigValidator:
         warnings = []
         
         try:
-            # Use Pydantic model for validation
-            validated_config = LoadGeneratorConfig(**config)
+            # Check if this is a multi-target config (P-008)
+            is_multi_target = 'targets' in config and isinstance(config.get('targets'), list)
             
-            # Additional business rule validations
+            if is_multi_target:
+                # Validate using ConfigEnvironment model for multi-target
+                from models import ConfigEnvironment
+                validated_env = ConfigEnvironment(**config)
+                
+                # Get the validated config values for business rules
+                # Note: For multi-target, we check each target individually
+                if validated_env.targets:
+                    for target in validated_env.targets:
+                        if not target.token_auth and config.get('randomize_visitor_countries', True):
+                            warnings.append(ConfigValidationError(
+                                field=f"targets.{target.name}.token_auth",
+                                message=f"Token auth recommended for '{target.name}' when randomizing visitor countries",
+                                severity="warning"
+                            ))
+            else:
+                # Legacy single-target validation
+                validated_config = LoadGeneratorConfig(**config)
+                
+                # Additional business rule validations for single-target
+                
+                # Check if token_auth is provided when randomize_visitor_countries is true
+                if validated_config.randomize_visitor_countries and not validated_config.matomo_token_auth:
+                    warnings.append(ConfigValidationError(
+                        field="matomo_token_auth",
+                        message="MATOMO_TOKEN_AUTH is recommended when RANDOMIZE_VISITOR_COUNTRIES is enabled for accurate geolocation",
+                        severity="warning"
+                    ))
+                
+                # Warn if concurrency is very high
+                if validated_config.concurrency > 200:
+                    warnings.append(ConfigValidationError(
+                        field="concurrency",
+                        message=f"High concurrency ({validated_config.concurrency}) may cause performance issues or rate limiting",
+                        severity="warning"
+                    ))
+                
+                # Warn if target visits is very high
+                if validated_config.target_visits_per_day > 500000:
+                    warnings.append(ConfigValidationError(
+                        field="target_visits_per_day",
+                        message=f"Very high target ({validated_config.target_visits_per_day:,.0f} visits/day) may overwhelm the Matomo server",
+                        severity="warning"
+                    ))
+                
+                # Check if auto-stop is configured
+                if validated_config.auto_stop_after_hours == 0 and validated_config.max_total_visits == 0:
+                    warnings.append(ConfigValidationError(
+                        field="auto_stop",
+                        message="No auto-stop configured. Load generator will run indefinitely until manually stopped",
+                        severity="warning"
+                    ))
             
-            # Check if token_auth is provided when randomize_visitor_countries is true
-            if validated_config.randomize_visitor_countries and not validated_config.matomo_token_auth:
-                warnings.append(ConfigValidationError(
-                    field="matomo_token_auth",
-                    message="MATOMO_TOKEN_AUTH is recommended when RANDOMIZE_VISITOR_COUNTRIES is enabled for accurate geolocation",
-                    severity="warning"
-                ))
+            # Common validations for both modes
+            concurrency = config.get('concurrency', 50)
+            target_visits = config.get('target_visits_per_day', 20000)
+            auto_stop_hours = config.get('auto_stop_after_hours', 0)
+            max_visits = config.get('max_total_visits', 0)
             
             # Warn if concurrency is very high
-            if validated_config.concurrency > 200:
+            if concurrency > 200:
                 warnings.append(ConfigValidationError(
                     field="concurrency",
-                    message=f"High concurrency ({validated_config.concurrency}) may cause performance issues or rate limiting",
+                    message=f"High concurrency ({concurrency}) may cause performance issues or rate limiting",
                     severity="warning"
                 ))
             
             # Warn if target visits is very high
-            if validated_config.target_visits_per_day > 500000:
+            if target_visits > 500000:
                 warnings.append(ConfigValidationError(
                     field="target_visits_per_day",
-                    message=f"Very high target ({validated_config.target_visits_per_day:,.0f} visits/day) may overwhelm the Matomo server",
+                    message=f"Very high target ({target_visits:,.0f} visits/day) may overwhelm the Matomo server",
                     severity="warning"
                 ))
             
             # Check if auto-stop is configured
-            if validated_config.auto_stop_after_hours == 0 and validated_config.max_total_visits == 0:
+            if auto_stop_hours == 0 and max_visits == 0:
                 warnings.append(ConfigValidationError(
                     field="auto_stop",
                     message="No auto-stop configured. Load generator will run indefinitely until manually stopped",
