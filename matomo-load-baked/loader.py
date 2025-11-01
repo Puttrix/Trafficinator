@@ -13,10 +13,38 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 import pytz
 
+# Import multi-target support (P-008)
+try:
+    from target_router import TargetRouter, Target, parse_targets_from_env, get_distribution_strategy
+    MULTI_TARGET_AVAILABLE = True
+except ImportError:
+    MULTI_TARGET_AVAILABLE = False
+    logging.warning("Multi-target support unavailable: target_router module not found")
+
 # ---- Configuration via environment variables ----
+# Multi-target configuration (P-008) - takes precedence if available
+MULTI_TARGET_ENABLED = False
+TARGET_ROUTER = None
+
+if MULTI_TARGET_AVAILABLE:
+    parsed_targets = parse_targets_from_env()
+    if parsed_targets:
+        try:
+            strategy = get_distribution_strategy()
+            TARGET_ROUTER = TargetRouter(parsed_targets, strategy)
+            MULTI_TARGET_ENABLED = True
+            logging.info(f"Multi-target mode enabled with {len(parsed_targets)} targets using '{strategy}' strategy")
+        except Exception as e:
+            logging.error(f"Failed to initialize multi-target router: {e}")
+
+# Single-target configuration (legacy, backward compatible)
 MATOMO_URL = os.environ.get("MATOMO_URL", "https://matomo.example.com/matomo.php").rstrip("/")
 SITE_ID = int(os.environ.get("MATOMO_SITE_ID", "1"))
 MATOMO_TOKEN_AUTH = os.environ.get("MATOMO_TOKEN_AUTH", "")
+
+# Validate configuration
+if not MULTI_TARGET_ENABLED and not MATOMO_URL:
+    raise ValueError("Either MULTI_TARGET_CONFIG or MATOMO_URL must be configured")
 URLS_FILE_ENV = os.environ.get("URLS_FILE")
 DEFAULT_URL_CANDIDATES = [
     URLS_FILE_ENV,
@@ -869,11 +897,59 @@ def check_daily_cap(now, day_start, visits_today_local, max_total):
     return False, day_start, visits_today_local
 
 async def send_hit(session, params, headers):
+    """
+    Send tracking hit to Matomo.
+    
+    Supports both single-target (legacy) and multi-target (P-008) modes.
+    In multi-target mode, routes request to next target according to strategy.
+    """
+    if MULTI_TARGET_ENABLED and TARGET_ROUTER:
+        return await send_hit_multi_target(session, params, headers)
+    else:
+        return await send_hit_single_target(session, params, headers)
+
+
+async def send_hit_single_target(session, params, headers):
+    """Send tracking hit to single Matomo instance (legacy mode)"""
     try:
         async with session.get(MATOMO_URL, params=params, headers=headers) as resp:
             await resp.read()
             return resp.status
     except Exception:
+        return None
+
+
+async def send_hit_multi_target(session, params, headers):
+    """
+    Send tracking hit to multiple Matomo instances (P-008).
+    
+    Routes request to next target according to configured strategy.
+    Records per-target metrics for observability.
+    """
+    target = TARGET_ROUTER.next_target()
+    metrics = TARGET_ROUTER.metrics[target.name]
+    
+    # Build target-specific params
+    target_params = params.copy()
+    target_params['idsite'] = str(target.site_id)
+    
+    # Add token_auth if configured for this target
+    if target.token_auth:
+        target_params['token_auth'] = target.token_auth
+    
+    target_url = f"{target.url}/matomo.php" if not target.url.endswith("matomo.php") else target.url
+    
+    start_time = time.time()
+    try:
+        async with session.get(target_url, params=target_params, headers=headers) as resp:
+            await resp.read()
+            latency_ms = (time.time() - start_time) * 1000
+            metrics.record_success(latency_ms)
+            return resp.status
+    except Exception as e:
+        latency_ms = (time.time() - start_time) * 1000
+        metrics.record_failure(str(e))
+        logging.warning(f"Request to target '{target.name}' failed after {latency_ms:.1f}ms: {e}")
         return None
 
 async def visit(session, urls):

@@ -3,7 +3,7 @@ Pydantic models for request/response validation
 """
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 
 class ContainerState(BaseModel):
@@ -23,11 +23,55 @@ class ContainerStats(BaseModel):
     current_rate: Optional[str] = Field(None, description="Current visit rate (e.g., '0.23/sec')")
 
 
+# ---------------------------------------------------------------------------
+# Multi-target models (P-008)
+# ---------------------------------------------------------------------------
+
+class Target(BaseModel):
+    """Single Matomo tracking target for multi-target configurations"""
+    
+    name: str = Field(..., min_length=1, max_length=100, description="Human-friendly target label")
+    url: HttpUrl = Field(..., description="Matomo tracking endpoint URL")
+    site_id: int = Field(..., ge=1, description="Matomo site ID")
+    token_auth: Optional[str] = Field(None, description="Matomo authentication token (optional)")
+    weight: int = Field(1, ge=1, le=100, description="Distribution weight for weighted strategy")
+    enabled: bool = Field(True, description="Whether this target is active")
+    
+    model_config = ConfigDict(extra='forbid')
+
+
+class TargetMetrics(BaseModel):
+    """Runtime metrics for a single target"""
+    
+    target_name: str
+    total_requests: int = 0
+    successful_requests: int = 0
+    failed_requests: int = 0
+    avg_latency_ms: Optional[float] = None
+    last_error: Optional[str] = None
+    last_success: Optional[str] = None
+    status: Literal["healthy", "degraded", "failed", "unknown"] = "unknown"
+
+
 class ConfigEnvironment(BaseModel):
     """Configuration environment variables"""
+    
+    # Single-target configuration (legacy, mutually exclusive with targets)
     MATOMO_URL: Optional[str] = None
     MATOMO_SITE_ID: Optional[str] = None
     MATOMO_TOKEN_AUTH: Optional[str] = Field(None, description="Masked for security")
+    
+    # Multi-target configuration (P-008, mutually exclusive with MATOMO_URL)
+    targets: Optional[List[Target]] = Field(
+        None,
+        description="Array of Matomo targets for multi-instance load distribution"
+    )
+    distribution_strategy: Literal["round-robin", "weighted", "random"] = Field(
+        "round-robin",
+        description="Strategy for distributing requests across targets"
+    )
+    
+    # Load generation settings
     TARGET_VISITS_PER_DAY: Optional[str] = None
     PAGEVIEWS_MIN: Optional[str] = None
     PAGEVIEWS_MAX: Optional[str] = None
@@ -52,6 +96,41 @@ class ConfigEnvironment(BaseModel):
     TIMEZONE: Optional[str] = None
 
     model_config = ConfigDict(extra='allow')
+    
+    @model_validator(mode='after')
+    def validate_target_configuration(self):
+        """Ensure single-target and multi-target configs are mutually exclusive"""
+        has_single_target = bool(self.MATOMO_URL)
+        has_multi_target = bool(self.targets and len(self.targets) > 0)
+        
+        if has_single_target and has_multi_target:
+            raise ValueError(
+                "Cannot specify both MATOMO_URL (single-target) and targets (multi-target). "
+                "Choose one configuration mode."
+            )
+        
+        if not has_single_target and not has_multi_target:
+            raise ValueError(
+                "Must specify either MATOMO_URL (single-target) or targets array (multi-target)"
+            )
+        
+        # Validate multi-target specific requirements
+        if has_multi_target:
+            enabled_targets = [t for t in self.targets if t.enabled]
+            if not enabled_targets:
+                raise ValueError("At least one target must be enabled")
+            
+            # Check for duplicate target names
+            target_names = [t.name for t in self.targets]
+            if len(target_names) != len(set(target_names)):
+                raise ValueError("Target names must be unique within a configuration")
+            
+            # For weighted strategy, ensure all targets have weights
+            if self.distribution_strategy == "weighted":
+                if any(t.weight < 1 for t in enabled_targets):
+                    raise ValueError("All enabled targets must have weight >= 1 for weighted distribution")
+        
+        return self
 
 
 class StatusResponse(BaseModel):
@@ -59,6 +138,10 @@ class StatusResponse(BaseModel):
     container: ContainerState
     config: Optional[ConfigEnvironment] = None
     stats: Optional[ContainerStats] = None
+    target_metrics: Optional[List[TargetMetrics]] = Field(
+        None,
+        description="Per-target metrics (only present in multi-target mode)"
+    )
 
 
 class StartRequest(BaseModel):
@@ -113,6 +196,23 @@ class ApplyConfigResponse(BaseModel):
 class URLContentRequest(BaseModel):
     """Request for URL validation/upload"""
     content: str = Field(..., description="URL file content (one URL per line)")
+
+
+class TargetValidationResult(BaseModel):
+    """Result of validating a single target's connectivity"""
+    target_name: str
+    url: str
+    success: bool
+    status_code: Optional[int] = None
+    error: Optional[str] = None
+    latency_ms: Optional[float] = None
+
+
+class MultiTargetValidationResponse(BaseModel):
+    """Response for validating multiple targets"""
+    overall_success: bool
+    message: str
+    results: List[TargetValidationResult]
 
 
 class PresetMetadata(BaseModel):

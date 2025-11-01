@@ -1,18 +1,19 @@
 # Status
 
-**Last Updated:** 2025-10-30 (P-018 Configuration Persistence Complete)
+**Last Updated:** 2025-11-01 (P-008 Multi-Target Support - In Progress)
 
 ---
 
 ## Focus
-- Capture follow-up QA for the new presets API and tee up Phase 3 polish (P-025 documentation/testing, P-026 enhancements).
+- Implement multi-target support for distributing load across multiple Matomo instances (P-008).
+- Research completed; backend design phase underway.
 
 ---
 
 ## Now / Next / Later
-- **Now:** Verify presets persistence end-to-end when runtime is available and note any integration gaps for QA.
-- **Next:** Phase 3 polish — P-025 testing + documentation refresh, P-026 enhancement triage.
-- **Later:** Phase 4 nice-to-haves (advanced features, metrics, websockets) once polish is stable.
+- **Now:** P-008 Multi-target support — Design data models, implement async distribution logic, update UI.
+- **Next:** Testing and documentation for P-008; Phase 3 polish (P-025, P-026) if needed.
+- **Later:** Phase 4 nice-to-haves (advanced features, metrics, websockets) once core features stable.
 
 ---
 
@@ -33,6 +34,7 @@
 - `.assistant/ai_guidance.md` — Current AI-assistant quickstart (replaces legacy CLAUDE.md).
 - `tools/validate_config.py` — CLI validator for environment variables and Matomo connectivity.
 - `presets/.env.*` — Ready-to-use Light/Medium/Heavy environment presets for Docker Compose.
+- [GitHub Issue #8](https://github.com/Puttrix/Trafficinator/issues/8) — P-008 multi-target support specification.
 
 ---
 
@@ -53,3 +55,6 @@
 - Do we need optimistic locking/version stamps for saved configs?
 - Should presets live in the same table as ad-hoc configs or stay file-based?
 - How are secrets (tokens) persisted—store hashed, encrypted, or prompt on load?
+- **P-008 Multi-target:** Should target configs be a separate table or embedded JSON in presets table?
+- **P-008 Multi-target:** How to handle partial failures (some targets succeed, others fail)?
+- **P-008 Multi-target:** Should we support per-target feature flags (e.g., ecommerce on some, not others)?

@@ -156,3 +156,38 @@
 - tool: apply_patch (control-ui/static/index.html)
 - result: Made the Trafficinator logo always visible by removing the mobile-only `hidden` class.
 - artifacts: none
+
+## 2025-11-01
+- tool: mcp_upstash_conte_resolve-library-id (docker-py, asyncio, httpx); mcp_upstash_conte_get-library-docs (/docker/docker-py, /encode/httpx)
+- result: Researched multi-instance patterns from Docker SDK and async HTTP libraries. Found: httpx.AsyncClient with asyncio.gather() enables concurrent requests to multiple targets; docker-py supports concurrent container management.
+- artifacts: none
+
+- tool: mcp_github_github_issue_write
+- result: Created GitHub Issue #8 for P-008 multi-target support with comprehensive acceptance criteria, technical approach using async/httpx patterns, 5-step implementation plan, and effort estimates (8-12 hours total).
+- artifacts: https://github.com/Puttrix/Trafficinator/issues/8
+
+- tool: replace_string_in_file (.assistant/status.md)
+- result: Updated status.md to reflect P-008 as current focus, added GitHub issue to artifacts section, expanded open questions with multi-target design considerations (separate tables vs embedded JSON, partial failure handling, per-target feature flags).
+- artifacts: .assistant/status.md
+
+- tool: create_file (.assistant/adr/ADR-009-multi-target-architecture.md); replace_string_in_file (control-ui/models.py x3)
+- result: Created comprehensive ADR-009 documenting multi-target architecture decisions (embedded JSON array, distribution strategies, async concurrency, partial failure model). Extended Pydantic models with `Target`, `TargetMetrics`, `TargetValidationResult` classes. Added multi-target fields to `ConfigEnvironment` with mutual exclusivity validation. Implemented validation for duplicate names, enabled targets, weighted strategy requirements.
+- artifacts: .assistant/adr/ADR-009-multi-target-architecture.md, control-ui/models.py
+
+- tool: run_in_terminal (python3 model validation tests)
+- result: Executed 5 validation tests confirming: (1) multi-target configs accepted, (2) single-target backward compatibility maintained, (3) dual-mode configs rejected, (4) duplicate target names rejected, (5) all-disabled targets rejected. All tests passed.
+- artifacts: none
+
+- tool: create_file (matomo-load-baked/target_router.py)
+- result: Created TargetRouter module with Target/TargetMetrics dataclasses, distribution logic (round-robin/weighted/random), per-target metrics tracking, and environment config parsing. Supports 3 strategies, health status tracking (healthy/degraded/failed/unknown), and summary statistics.
+- artifacts: matomo-load-baked/target_router.py
+
+- tool: replace_string_in_file (matomo-load-baked/loader.py x2)
+- result: Updated loader to support multi-target mode: imports target_router, initializes TARGET_ROUTER from env config, validates single vs. multi-target config, refactored send_hit() into send_hit_single_target() and send_hit_multi_target() with per-target metrics recording and failure handling.
+- artifacts: matomo-load-baked/loader.py
+
+- tool: create_file (matomo-load-baked/tests/test_multi_target.py); run_in_terminal (pytest x2)
+- result: Created comprehensive test suite with 20 tests covering Target/TargetMetrics/TargetRouter classes, all 3 distribution strategies, environment parsing, and edge cases. All 33 tests pass (13 existing + 20 new), confirming backward compatibility maintained and new functionality works correctly.
+- artifacts: matomo-load-baked/tests/test_multi_target.py
+
+```
