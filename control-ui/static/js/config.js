@@ -301,9 +301,14 @@ class ConfigForm {
 
     // Validate entire configuration
     async validateConfig() {
+        console.log('validateConfig called');
+        console.log('isMultiTargetMode:', this.multiTargetManager?.isMultiTargetMode);
+        
         // Client-side validation for multi-target mode
         if (this.multiTargetManager && this.multiTargetManager.isMultiTargetMode) {
+            console.log('Running multi-target validation');
             const clientErrors = this.validateMultiTargetConfig();
+            console.log('Client validation errors:', clientErrors);
             if (clientErrors.length > 0) {
                 clientErrors.forEach(error => {
                     UI.showAlert(error, 'error');
@@ -313,6 +318,7 @@ class ConfigForm {
         }
 
         const config = this.getFormData();
+        console.log('Config to validate:', config);
         
         try {
             UI.showLoading('Validating configuration...');
@@ -590,8 +596,11 @@ class ConfigForm {
 
     // Handle form save
     async handleSave() {
+        console.log('handleSave called');
+        
         // First validate
         const isValid = await this.validateConfig();
+        console.log('Validation result:', isValid);
         
         if (!isValid) {
             UI.showAlert('Please fix validation errors before saving', 'error');
