@@ -48,6 +48,7 @@ class MultiTargetManager {
         const singleTargetContainer = document.getElementById('single-target-config');
         const multiTargetContainer = document.getElementById('multi-target-config');
         const modeToggle = document.getElementById('multi-target-mode');
+        const testConnectionBtn = document.getElementById('test-connection-btn');
 
         // Check if we have target data in the form
         const targetsContainer = document.getElementById('targets-container');
@@ -59,12 +60,20 @@ class MultiTargetManager {
             if (modeToggle) modeToggle.checked = true;
             if (singleTargetContainer) singleTargetContainer.classList.add('hidden');
             if (multiTargetContainer) multiTargetContainer.classList.remove('hidden');
+            if (testConnectionBtn) testConnectionBtn.classList.add('hidden');
+            
+            // Remove required from single-target fields
+            const urlField = document.getElementById('matomo_url');
+            const siteIdField = document.getElementById('matomo_site_id');
+            if (urlField) urlField.removeAttribute('required');
+            if (siteIdField) siteIdField.removeAttribute('required');
         } else {
             // Single-target mode
             this.isMultiTargetMode = false;
             if (modeToggle) modeToggle.checked = false;
             if (singleTargetContainer) singleTargetContainer.classList.remove('hidden');
             if (multiTargetContainer) multiTargetContainer.classList.add('hidden');
+            if (testConnectionBtn) testConnectionBtn.classList.remove('hidden');
         }
     }
 
@@ -84,6 +93,15 @@ class MultiTargetManager {
             
             // Hide single-target test button, keep validate visible
             if (testConnectionBtn) testConnectionBtn.classList.add('hidden');
+
+            // Remove 'required' attribute from single-target fields to prevent HTML5 validation
+            const singleTargetFields = ['matomo_url', 'matomo_site_id'];
+            singleTargetFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.removeAttribute('required');
+                }
+            });
 
             // If no targets exist, create one from single-target fields
             if (this.targets.length === 0) {
@@ -112,6 +130,12 @@ class MultiTargetManager {
             
             // Show single-target test button again
             if (testConnectionBtn) testConnectionBtn.classList.remove('hidden');
+
+            // Restore 'required' attribute to single-target fields
+            const urlField = document.getElementById('matomo_url');
+            const siteIdField = document.getElementById('matomo_site_id');
+            if (urlField) urlField.setAttribute('required', '');
+            if (siteIdField) siteIdField.setAttribute('required', '');
 
             // Copy first enabled target to single-target fields
             if (this.targets.length > 0) {
