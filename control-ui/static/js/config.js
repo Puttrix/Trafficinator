@@ -492,6 +492,12 @@ class ConfigForm {
 
     // Test Matomo connection
     async testConnection() {
+        // In multi-target mode, use "Test All Targets" instead
+        if (this.multiTargetManager && this.multiTargetManager.isMultiTargetMode) {
+            UI.showAlert('In multi-target mode, use "Test All Targets" button instead', 'info');
+            return;
+        }
+
         const matomoUrl = this.form.querySelector('[name="matomo_url"]').value;
         const siteId = this.form.querySelector('[name="matomo_site_id"]').value;
         

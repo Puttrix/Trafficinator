@@ -72,6 +72,8 @@ class MultiTargetManager {
     toggleMode(enableMultiTarget) {
         const singleTargetContainer = document.getElementById('single-target-config');
         const multiTargetContainer = document.getElementById('multi-target-config');
+        const testConnectionBtn = document.getElementById('test-connection-btn');
+        const validateBtn = document.getElementById('validate-config-btn');
 
         this.isMultiTargetMode = enableMultiTarget;
 
@@ -79,6 +81,9 @@ class MultiTargetManager {
             // Convert single target to multi-target
             singleTargetContainer.classList.add('hidden');
             multiTargetContainer.classList.remove('hidden');
+            
+            // Hide single-target test button, keep validate visible
+            if (testConnectionBtn) testConnectionBtn.classList.add('hidden');
 
             // If no targets exist, create one from single-target fields
             if (this.targets.length === 0) {
@@ -104,6 +109,9 @@ class MultiTargetManager {
             // Convert multi-target to single-target
             multiTargetContainer.classList.add('hidden');
             singleTargetContainer.classList.remove('hidden');
+            
+            // Show single-target test button again
+            if (testConnectionBtn) testConnectionBtn.classList.remove('hidden');
 
             // Copy first enabled target to single-target fields
             if (this.targets.length > 0) {
