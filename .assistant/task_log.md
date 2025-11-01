@@ -190,4 +190,8 @@
 - result: Created comprehensive test suite with 20 tests covering Target/TargetMetrics/TargetRouter classes, all 3 distribution strategies, environment parsing, and edge cases. All 33 tests pass (13 existing + 20 new), confirming backward compatibility maintained and new functionality works correctly.
 - artifacts: matomo-load-baked/tests/test_multi_target.py
 
+- tool: create_file (control-ui/static/js/multi_target.js); replace_string_in_file (config.js x3, index.html x2, status.js x2)
+- result: Implemented Web UI for multi-target configuration (P-008 Step 4): Created MultiTargetManager class with add/remove/test target functionality, mode toggle between single/multi-target, dynamic target cards with weight fields for weighted strategy, test-all-targets connectivity validator with results dialog. Updated config.js to integrate multi-target manager, load/save multi-target configs, and merge with form data. Extended index.html with multi-target UI section including mode toggle, distribution strategy selector, targets container, and test button. Updated status.js to display per-target metrics cards with health status badges (healthy/degraded/failed), aggregate metrics (total targets, requests, success rate), and per-target details grid showing requests/latency/errors.
+- artifacts: control-ui/static/js/multi_target.js, control-ui/static/js/config.js, control-ui/static/index.html, control-ui/static/js/status.js
+
 ```

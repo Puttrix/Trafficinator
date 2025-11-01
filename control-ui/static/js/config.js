@@ -4,12 +4,19 @@ class ConfigForm {
         this.form = null;
         this.currentConfig = null;
         this.validationErrors = {};
+        this.multiTargetManager = null;
     }
 
     // Initialize the configuration form
     init() {
         this.form = document.getElementById('config-form');
         if (!this.form) return;
+
+        // Initialize multi-target manager (P-008)
+        if (window.MultiTargetManager) {
+            this.multiTargetManager = new window.MultiTargetManager();
+            this.multiTargetManager.init();
+        }
 
         this.setupEventListeners();
         this.loadCurrentConfig();
@@ -211,6 +218,14 @@ class ConfigForm {
 
     // Populate form with config values
     populateForm(config) {
+        // Check if this is a multi-target config (P-008)
+        if (config.targets && Array.isArray(config.targets) && config.targets.length > 0) {
+            if (this.multiTargetManager) {
+                this.multiTargetManager.loadMultiTargetConfig(config);
+            }
+            return;
+        }
+
         for (const [key, value] of Object.entries(config)) {
             const input = this.form.querySelector(`[name="${key}"]`);
             if (input) {
@@ -230,6 +245,39 @@ class ConfigForm {
 
     // Get form data as config object
     getFormData() {
+        // Check if multi-target mode is active (P-008)
+        if (this.multiTargetManager && this.multiTargetManager.isMultiTargetMode) {
+            const multiTargetConfig = this.multiTargetManager.getMultiTargetConfig();
+            if (multiTargetConfig) {
+                // Merge multi-target config with other form fields
+                const formData = new FormData(this.form);
+                const config = { ...multiTargetConfig };
+                
+                // Include non-target fields
+                for (const [key, value] of formData.entries()) {
+                    // Skip single-target fields
+                    if (['matomo_url', 'matomo_site_id', 'matomo_token_auth'].includes(key)) {
+                        continue;
+                    }
+                    
+                    const input = this.form.querySelector(`[name="${key}"]`);
+                    if (!input) continue;
+                    
+                    if (input.type === 'number') {
+                        const num = parseFloat(value);
+                        config[key] = isNaN(num) ? 0 : num;
+                    } else if (input.type === 'checkbox') {
+                        config[key] = input.checked;
+                    } else {
+                        config[key] = value.trim();
+                    }
+                }
+                
+                return config;
+            }
+        }
+
+        // Single-target mode (legacy)
         const formData = new FormData(this.form);
         const config = {};
         

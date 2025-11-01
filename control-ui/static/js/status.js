@@ -293,6 +293,12 @@ class StatusDashboard {
 
     // Update metrics cards
     updateMetrics(status) {
+        // Check if multi-target metrics exist (P-008)
+        if (status.target_metrics && status.target_metrics.length > 0) {
+            this.updateMultiTargetMetrics(status);
+            return;
+        }
+
         // Uptime
         const uptimeEl = document.getElementById('metric-uptime');
         const uptimeDetailEl = document.getElementById('metric-uptime-detail');
@@ -602,6 +608,175 @@ class StatusDashboard {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
+        }
+    }
+
+    // Update multi-target metrics display (P-008)
+    updateMultiTargetMetrics(status) {
+        const metricsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-4');
+        if (!metricsContainer) return;
+
+        // Clear existing metrics
+        metricsContainer.innerHTML = '';
+
+        // Calculate aggregate metrics
+        let totalRequests = 0;
+        let totalSuccessful = 0;
+        let totalFailed = 0;
+        let totalLatency = 0;
+        let healthyCount = 0;
+        let degradedCount = 0;
+        let failedCount = 0;
+
+        status.target_metrics.forEach(tm => {
+            totalRequests += tm.total_requests || 0;
+            totalSuccessful += tm.successful_requests || 0;
+            totalFailed += tm.failed_requests || 0;
+
+            if (tm.status === 'healthy') healthyCount++;
+            else if (tm.status === 'degraded') degradedCount++;
+            else if (tm.status === 'failed') failedCount++;
+        });
+
+        const overallSuccessRate = totalRequests > 0 ? (totalSuccessful / totalRequests * 100) : 0;
+
+        // Show aggregate metrics in cards
+        metricsContainer.innerHTML = `
+            <!-- Total Targets Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Targets</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-2">${status.target_metrics.length}</p>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-lg">
+                        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        ${healthyCount} healthy
+                    </span>
+                    ${degradedCount > 0 ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">${degradedCount} degraded</span>` : ''}
+                    ${failedCount > 0 ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">${failedCount} failed</span>` : ''}
+                </div>
+            </div>
+
+            <!-- Total Requests Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total Requests</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-2">${totalRequests.toLocaleString()}</p>
+                    </div>
+                    <div class="p-3 bg-purple-50 rounded-lg">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">${totalSuccessful.toLocaleString()} successful, ${totalFailed.toLocaleString()} failed</p>
+            </div>
+
+            <!-- Success Rate Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Success Rate</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-2">${overallSuccessRate.toFixed(1)}%</p>
+                    </div>
+                    <div class="p-3 ${overallSuccessRate >= 95 ? 'bg-green-50' : overallSuccessRate >= 70 ? 'bg-yellow-50' : 'bg-red-50'} rounded-lg">
+                        <svg class="w-6 h-6 ${overallSuccessRate >= 95 ? 'text-green-600' : overallSuccessRate >= 70 ? 'text-yellow-600' : 'text-red-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Across all targets</p>
+            </div>
+
+            <!-- Uptime Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Uptime</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-2">${status.stats?.uptime || '--'}</p>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-lg">
+                        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Container runtime</p>
+            </div>
+        `;
+
+        // Add per-target details section
+        const configSection = document.getElementById('config-details')?.parentElement;
+        if (configSection) {
+            let targetDetailsSection = document.getElementById('target-details-section');
+            
+            if (!targetDetailsSection) {
+                targetDetailsSection = document.createElement('div');
+                targetDetailsSection.id = 'target-details-section';
+                targetDetailsSection.className = 'bg-white rounded-lg shadow mb-6';
+                configSection.parentNode.insertBefore(targetDetailsSection, configSection);
+            }
+
+            const targetCards = status.target_metrics.map(tm => {
+                const successRate = tm.total_requests > 0 
+                    ? (tm.successful_requests / tm.total_requests * 100) 
+                    : 0;
+
+                let statusBadge = '';
+                if (tm.status === 'healthy') {
+                    statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">✓ Healthy</span>';
+                } else if (tm.status === 'degraded') {
+                    statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">⚠ Degraded</span>';
+                } else if (tm.status === 'failed') {
+                    statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">✗ Failed</span>';
+                } else {
+                    statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">? Unknown</span>';
+                }
+
+                return `
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-gray-900">${UI.escapeHtml(tm.target_name)}</h4>
+                            ${statusBadge}
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-500">Requests</p>
+                                <p class="font-medium text-gray-900">${tm.total_requests.toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Success Rate</p>
+                                <p class="font-medium text-gray-900">${successRate.toFixed(1)}%</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Avg Latency</p>
+                                <p class="font-medium text-gray-900">${tm.avg_latency_ms ? tm.avg_latency_ms.toFixed(0) + 'ms' : '--'}</p>
+                            </div>
+                        </div>
+                        ${tm.last_error ? `<p class="text-xs text-red-600 mt-2">Last error: ${UI.escapeHtml(tm.last_error)}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            targetDetailsSection.innerHTML = `
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">
+                        Per-Target Metrics
+                        <span class="text-sm font-normal text-gray-500 ml-2">(${status.config?.distribution_strategy || 'unknown'} distribution)</span>
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${targetCards}
+                    </div>
+                </div>
+            `;
         }
     }
 }
