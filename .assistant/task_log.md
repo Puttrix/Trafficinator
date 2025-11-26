@@ -173,3 +173,7 @@
 - tool: apply_patch (control-ui/static/js/config.js)
 - result: Added default migration to map legacy UTC/ USD values to new CET/SEK defaults when loading status or saved presets, ensuring preset loads reflect updated defaults without losing overrides.
 - artifacts: control-ui/static/js/config.js
+
+- tool: apply_patch (control-ui/static/js/presets.js; control-ui/static/js/config.js)
+- result: Applied default migration when loading presets or populating the form so legacy UTC/USD values are converted to CET/SEK in the UI, ensuring preset loads no longer show UTC.
+- artifacts: control-ui/static/js/presets.js, control-ui/static/js/config.js
