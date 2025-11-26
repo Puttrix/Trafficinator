@@ -169,3 +169,7 @@
 - tool: apply_patch (presets/.env.extreme; presets/README.md)
 - result: Added file-based Extreme Load preset matching the UI definition (100k/day, concurrency 300, CET/SEK defaults) and documented it alongside existing presets.
 - artifacts: presets/.env.extreme, presets/README.md
+
+- tool: apply_patch (control-ui/static/js/config.js)
+- result: Added default migration to map legacy UTC/ USD values to new CET/SEK defaults when loading status or saved presets, ensuring preset loads reflect updated defaults without losing overrides.
+- artifacts: control-ui/static/js/config.js

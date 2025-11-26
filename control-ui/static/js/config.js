@@ -69,6 +69,7 @@ class ConfigForm {
                 
                 if (envList.length > 0) {
                     const parsedConfig = this.parseEnvVars(envList);
+                    this.applyDefaultMigrations(parsedConfig);
                     if (Object.keys(parsedConfig).length > 0) {
                         this.currentConfig = parsedConfig;
                         this.populateForm(parsedConfig);
@@ -80,6 +81,7 @@ class ConfigForm {
             if (!configLoaded) {
                 const latestPreset = await this.fetchLatestPresetConfig();
                 if (latestPreset) {
+                    this.applyDefaultMigrations(latestPreset);
                     this.currentConfig = latestPreset;
                     this.populateForm(latestPreset);
                     UI.showAlert('Loaded your most recent saved preset into the form.', 'info', 4000);
@@ -95,6 +97,17 @@ class ConfigForm {
             UI.showAlert('Could not load current configuration. Form will show defaults.', 'warning');
         } finally {
             UI.hideLoading();
+        }
+    }
+
+    // Migrate legacy defaults to current defaults without removing user overrides
+    applyDefaultMigrations(config) {
+        if (!config) return;
+        if (config.timezone === 'UTC' || !config.timezone) {
+            config.timezone = 'CET';
+        }
+        if (config.ecommerce_currency === 'USD' || !config.ecommerce_currency) {
+            config.ecommerce_currency = 'SEK';
         }
     }
 
