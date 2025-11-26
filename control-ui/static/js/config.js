@@ -224,6 +224,9 @@ class ConfigForm {
 
     // Populate form with config values
     populateForm(config) {
+        // Harmonize legacy defaults before rendering
+        this.applyDefaultMigrations(config);
+
         for (const [key, value] of Object.entries(config)) {
             const input = this.form.querySelector(`[name="${key}"]`);
             if (input) {

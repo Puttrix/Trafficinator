@@ -290,6 +290,17 @@ class LoadPresets {
         }
     }
 
+    // Apply default migrations (legacy UTC/USD -> CET/SEK)
+    applyDefaultMigrations(config) {
+        if (!config) return;
+        if (config.timezone === 'UTC' || !config.timezone) {
+            config.timezone = 'CET';
+        }
+        if (config.ecommerce_currency === 'USD' || !config.ecommerce_currency) {
+            config.ecommerce_currency = 'SEK';
+        }
+    }
+
     // Load preset into configuration form
     loadPreset(presetKey) {
         const preset = this.presets[presetKey];
@@ -314,6 +325,9 @@ class LoadPresets {
                         matomo_site_id: currentSiteId || preset.config.matomo_site_id,
                         matomo_token_auth: currentToken || preset.config.matomo_token_auth
                     };
+
+                    // Migrate legacy defaults to current ones
+                    this.applyDefaultMigrations(config);
 
                     // Load into form
                     this.populateForm(config);
