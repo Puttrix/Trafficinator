@@ -4,9 +4,10 @@ Preset environment files make it easy to start Trafficinator with opinionated co
 
 | Preset | Visits / Day | Concurrency | Typical Use |
 |--------|--------------|-------------|-------------|
-| `.env.light`  | ~1,000 | 10  | Local development, smoke tests |
-| `.env.medium` | ~10,000 | 50 | Production-simulated workload |
-| `.env.heavy`  | ~50,000 | 150 | Stress and capacity testing |
+| `.env.light`   | ~1,000  | 10   | Local development, smoke tests |
+| `.env.medium`  | ~10,000 | 50   | Production-simulated workload |
+| `.env.heavy`   | ~50,000 | 150  | Stress and capacity testing |
+| `.env.extreme` | ~100,000| 300  | Maximum stress / enterprise scale |
 
 ## Usage
 

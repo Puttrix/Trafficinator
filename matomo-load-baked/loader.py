@@ -65,10 +65,10 @@ ECOMMERCE_ITEMS_MIN = int(os.environ.get("ECOMMERCE_ITEMS_MIN", "1"))
 ECOMMERCE_ITEMS_MAX = int(os.environ.get("ECOMMERCE_ITEMS_MAX", "5"))
 ECOMMERCE_TAX_RATE = float(os.environ.get("ECOMMERCE_TAX_RATE", "0.10"))  # 10% tax rate
 ECOMMERCE_SHIPPING_RATES = list(map(float, os.environ.get("ECOMMERCE_SHIPPING_RATES", "0,5.99,9.99,15.99").split(",")))
-ECOMMERCE_CURRENCY = os.environ.get("ECOMMERCE_CURRENCY", "USD")  # Currency code for orders
+ECOMMERCE_CURRENCY = os.environ.get("ECOMMERCE_CURRENCY", "SEK")  # Currency code for orders
 
 # Timezone configuration
-TIMEZONE = os.environ.get("TIMEZONE", "UTC")  # Timezone for visit timestamps
+TIMEZONE = os.environ.get("TIMEZONE", "CET")  # Timezone for visit timestamps
 
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
@@ -811,8 +811,7 @@ async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str]) -> bo
                 'ec_st': f"{subtotal:.2f}",
                 'ec_tx': f"{tax:.2f}",
             })
-            if ECOMMERCE_CURRENCY != "USD":
-                params['ec_currency'] = ECOMMERCE_CURRENCY
+            params['ec_currency'] = ECOMMERCE_CURRENCY
             params.setdefault('action_name', f"Funnel Order: {order_id}")
             last_page_url = page_url
 
@@ -1048,8 +1047,7 @@ async def visit(session, urls):
             params['revenue'] = str(revenue)
             params['ec_st'] = str(subtotal)
             params['ec_tx'] = str(tax)
-            if ECOMMERCE_CURRENCY != "USD":
-                params['ec_currency'] = ECOMMERCE_CURRENCY
+            params['ec_currency'] = ECOMMERCE_CURRENCY
             params['action_name'] = f'Ecommerce Order: {order_id} ({ECOMMERCE_CURRENCY} {revenue})'
         # Update last_page_url so the next pageview can use it as urlref
         # For outlink/download we keep last_page_url as the original page containing the link

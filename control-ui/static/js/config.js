@@ -336,7 +336,7 @@ class ConfigForm {
         // Currency validation
         if (name === 'ecommerce_currency' && value) {
             if (!/^[A-Z]{3}$/.test(value)) {
-                error = 'Currency must be 3 uppercase letters (e.g., USD, EUR, GBP)';
+                error = 'Currency must be 3 uppercase letters (e.g., SEK, EUR, GBP)';
             }
         }
         
