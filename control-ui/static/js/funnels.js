@@ -515,7 +515,7 @@ class FunnelsManager {
                             <div data-field-group="ecommerce" class="${step.type === 'ecommerce' ? '' : 'hidden'}">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Currency</label>
                                 <input type="text" maxlength="3" class="step-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus-border-transparent"
-                                    data-field="ecommerce_currency" data-step-index="${index}" value="${step.ecommerce_currency ?? ''}" placeholder="e.g., USD">
+                                    data-field="ecommerce_currency" data-step-index="${index}" value="${step.ecommerce_currency ?? ''}" placeholder="e.g., SEK">
                             </div>
 
                             <div>

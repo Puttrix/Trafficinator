@@ -156,3 +156,16 @@
 - tool: apply_patch (control-ui/static/index.html)
 - result: Made the Trafficinator logo always visible by removing the mobile-only `hidden` class.
 - artifacts: none
+
+## 2025-11-26
+- tool: apply_patch (.assistant/status.md)
+- result: Refreshed status.md from backlog/task_log to reflect current P-008 focus, risks, artifacts, and recent progress.
+- artifacts: .assistant/status.md
+
+- tool: apply_patch (matomo-load-baked/loader.py; control-ui/config_validator.py; control-ui/static/index.html; control-ui/static/js/presets.js; control-ui/static/js/config.js; control-ui/static/js/funnels.js; presets/.env.light; presets/.env.medium; presets/.env.heavy)
+- result: Defaulted timezone to CET and ecommerce currency to SEK while keeping overrides: updated loader/env defaults, Control UI defaults/placeholders and validation copy, preset definitions and env files, funnel currency placeholder, and ensured currency is always sent in ecommerce payloads.
+- artifacts: matomo-load-baked/loader.py, control-ui/config_validator.py, control-ui/static/index.html, control-ui/static/js/presets.js, control-ui/static/js/config.js, control-ui/static/js/funnels.js, presets/.env.light, presets/.env.medium, presets/.env.heavy
+
+- tool: apply_patch (presets/.env.extreme; presets/README.md)
+- result: Added file-based Extreme Load preset matching the UI definition (100k/day, concurrency 300, CET/SEK defaults) and documented it alongside existing presets.
+- artifacts: presets/.env.extreme, presets/README.md

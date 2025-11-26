@@ -13,6 +13,19 @@
       accepts: Documentation clearly states URLs are built into Docker image
       result: `.assistant/ai_guidance.md` explains that `urls.txt` ships inside the image and custom URLs are managed through the Control UI.
 
+## Configuration Defaults
+- [x] **P-030** Default timezone to CET across presets/UI
+      tags: maintenance, config  priority: low  est: 0.5h  completed: 2025-11-26
+      deps: none
+      accepts: Presets and UI load with TIMEZONE=CET by default; loader honors CET default while allowing override.
+      result: Updated loader env default to CET, Control UI defaults/placeholders, preset env files, and preset definitions.
+
+- [x] **P-031** Default ecommerce currency to SEK (overrideable)
+      tags: maintenance, ecommerce  priority: low  est: 0.5h  completed: 2025-11-26
+      deps: none
+      accepts: Default ecommerce currency shows as SEK while remaining user-editable; validation supports overrides and loader passes chosen currency.
+      result: Set validator/UI/presets to SEK defaults and ensured loader always includes currency code.
+
 ## Testing & Quality
 - [x] **P-003** Enhance test coverage for complex behaviors
       tags: testing, quality  priority: high  est: 4h  completed: 2025-10-30

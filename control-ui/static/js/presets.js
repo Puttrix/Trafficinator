@@ -31,8 +31,8 @@ class LoadPresets {
                     randomize_visitor_countries: false,
                     ecommerce_order_value_min: 15.99,
                     ecommerce_order_value_max: 99.99,
-                    ecommerce_currency: "USD",
-                    timezone: "UTC"
+                    ecommerce_currency: "SEK",
+                    timezone: "CET"
                 },
                 metrics: {
                     visitsPerDay: "1,000",
@@ -70,8 +70,8 @@ class LoadPresets {
                     randomize_visitor_countries: true,
                     ecommerce_order_value_min: 15.99,
                     ecommerce_order_value_max: 299.99,
-                    ecommerce_currency: "USD",
-                    timezone: "UTC"
+                    ecommerce_currency: "SEK",
+                    timezone: "CET"
                 },
                 metrics: {
                     visitsPerDay: "10,000",
@@ -109,8 +109,8 @@ class LoadPresets {
                     randomize_visitor_countries: true,
                     ecommerce_order_value_min: 15.99,
                     ecommerce_order_value_max: 499.99,
-                    ecommerce_currency: "USD",
-                    timezone: "UTC"
+                    ecommerce_currency: "SEK",
+                    timezone: "CET"
                 },
                 metrics: {
                     visitsPerDay: "50,000",
@@ -148,8 +148,8 @@ class LoadPresets {
                     randomize_visitor_countries: true,
                     ecommerce_order_value_min: 15.99,
                     ecommerce_order_value_max: 999.99,
-                    ecommerce_currency: "USD",
-                    timezone: "UTC"
+                    ecommerce_currency: "SEK",
+                    timezone: "CET"
                 },
                 metrics: {
                     visitsPerDay: "100,000",

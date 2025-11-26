@@ -74,10 +74,10 @@ class LoadGeneratorConfig(BaseModel):
     # Ecommerce
     ecommerce_order_value_min: float = Field(15.99, ge=0.01)
     ecommerce_order_value_max: float = Field(299.99, ge=0.01)
-    ecommerce_currency: str = Field("USD", min_length=3, max_length=3)
+    ecommerce_currency: str = Field("SEK", min_length=3, max_length=3)
     
     # Timezone
-    timezone: str = Field("UTC")
+    timezone: str = Field("CET")
     
     @field_validator("matomo_url")
     @classmethod
@@ -102,7 +102,7 @@ class LoadGeneratorConfig(BaseModel):
     def validate_currency(cls, v: str) -> str:
         """Validate currency code"""
         if not v.isupper():
-            raise ValueError("Currency code must be uppercase (e.g., USD, EUR, GBP)")
+            raise ValueError("Currency code must be uppercase (e.g., SEK, EUR, GBP)")
         if not re.match(r'^[A-Z]{3}$', v):
             raise ValueError("Currency code must be 3 uppercase letters")
         return v
