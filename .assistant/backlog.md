@@ -300,6 +300,11 @@
       deps: none
       accepts: Users can add Python modules to define custom traffic behaviors
 
+- [ ] **P-032** Historical backfill mode (date-ranged traffic replay)
+      tags: feature, data, matomo  priority: medium  est: 6h
+      deps: P-006 (patterns), P-015 (backend)
+      accepts: Backfill mode to generate timestamped visits over a configurable past window (e.g., 30–90 days) with timezone-aware `cdt`, optional visits-per-day override, guardrails on date ranges, and optional deterministic seeds for reruns.
+
 ## Infrastructure
 - [ ] **P-011** Kubernetes manifests for k8s deployments
       tags: infra, k8s  priority: low  est: 4h

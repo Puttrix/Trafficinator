@@ -177,3 +177,7 @@
 - tool: apply_patch (control-ui/static/js/presets.js; control-ui/static/js/config.js)
 - result: Applied default migration when loading presets or populating the form so legacy UTC/USD values are converted to CET/SEK in the UI, ensuring preset loads no longer show UTC.
 - artifacts: control-ui/static/js/presets.js, control-ui/static/js/config.js
+
+- tool: apply_patch (.assistant/backlog.md)
+- result: Added P-032 Historical backfill mode to backlog: date-ranged traffic replay (30–90 days), timezone-aware `cdt`, visits-per-day override, guardrails on date ranges, optional deterministic seeds.
+- artifacts: .assistant/backlog.md
