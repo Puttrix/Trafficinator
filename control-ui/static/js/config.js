@@ -212,6 +212,33 @@ class ConfigForm {
                 case 'TIMEZONE':
                     config.timezone = value;
                     break;
+                case 'BACKFILL_ENABLED':
+                    config.backfill_enabled = value === 'true' || value === '1';
+                    break;
+                case 'BACKFILL_START_DATE':
+                    config.backfill_start_date = value;
+                    break;
+                case 'BACKFILL_END_DATE':
+                    config.backfill_end_date = value;
+                    break;
+                case 'BACKFILL_DAYS_BACK':
+                    config.backfill_days_back = parseInt(value);
+                    break;
+                case 'BACKFILL_DURATION_DAYS':
+                    config.backfill_duration_days = parseInt(value);
+                    break;
+                case 'BACKFILL_MAX_VISITS_PER_DAY':
+                    config.backfill_max_visits_per_day = parseInt(value);
+                    break;
+                case 'BACKFILL_MAX_VISITS_TOTAL':
+                    config.backfill_max_visits_total = parseInt(value);
+                    break;
+                case 'BACKFILL_RPS_LIMIT':
+                    config.backfill_rps_limit = parseFloat(value);
+                    break;
+                case 'BACKFILL_SEED':
+                    config.backfill_seed = parseInt(value);
+                    break;
             }
         });
 
@@ -253,8 +280,13 @@ class ConfigForm {
             const input = this.form.querySelector(`[name="${key}"]`);
             
             if (input.type === 'number') {
+                if (value === '' || value === null) {
+                    continue; // skip empty optional numbers to avoid forcing zeros
+                }
                 const num = parseFloat(value);
-                config[key] = isNaN(num) ? 0 : num;
+                if (!isNaN(num)) {
+                    config[key] = num;
+                }
             } else if (input.type === 'checkbox') {
                 config[key] = input.checked;
             } else {

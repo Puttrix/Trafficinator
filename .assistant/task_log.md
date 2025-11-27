@@ -197,3 +197,18 @@
 - args: Introduced backfill config fields/validation (date windows, caps, seed, RPS), warnings, status model fields, and env mapping for API/apply flows.
 - result: Backend accepts and validates backfill settings with guardrails (window <=180d, no future dates, caps consistency) and exposes env mapping/status fields for upcoming UI/loader work.
 - artifacts: control-ui/config_validator.py, control-ui/models.py, control-ui/container_manager.py
+
+- tool: apply_patch (matomo-load-baked/loader.py)
+- args: Added backfill execution path: env parsing, TZ-aware date window selection, per-day/global caps, optional RPS limit, per-day seed offsets, and day-bound visit timelines. Split realtime/backfill loops and kept existing behavior for non-backfill runs.
+- result: Loader can run historical backfill over bounded windows with per-day targets while keeping visits inside each day's timezone bounds; realtime mode unchanged.
+- artifacts: matomo-load-baked/loader.py
+
+- tool: apply_patch (control-ui/static/index.html; control-ui/static/js/config.js)
+- args: Added Backfill section to Config UI (enable toggle, date or relative window, caps, RPS limit, seed) and wired env parsing/form data handling for backfill fields; skipped empty numeric fields to avoid forcing zeros.
+- result: UI can configure backfill settings, and config parsing/saving supports new fields for presets/status/apply flows.
+- artifacts: control-ui/static/index.html, control-ui/static/js/config.js
+
+- tool: apply_patch (WEB_UI_GUIDE.md; presets/README.md)
+- args: Documented backfill usage in the Config tab (absolute/relative window, caps, RPS, seed, guardrails) and added preset README guidance for enabling backfill via env vars.
+- result: Users have guidance for configuring historical replay and enabling it through env files or UI.
+- artifacts: WEB_UI_GUIDE.md, presets/README.md
