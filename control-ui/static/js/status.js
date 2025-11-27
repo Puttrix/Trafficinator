@@ -182,6 +182,9 @@ class StatusDashboard {
         
         // Update configuration details
         this.updateConfigDetails(status);
+
+        // Update backfill summary
+        this.updateBackfill(status);
     }
 
     // Update status indicator (icon, text, color)
@@ -481,6 +484,54 @@ class StatusDashboard {
             return value === 'true' || value === '1' ? 'Enabled' : 'Disabled';
         }
         return typeof value === 'string' ? value : String(value);
+    }
+
+    // Backfill summary panel
+    updateBackfill(status) {
+        const container = document.getElementById('backfill-status');
+        if (!container) return;
+
+        const enabledRaw = this.getConfigValue(status, 'BACKFILL_ENABLED', 'false');
+        const enabled = String(enabledRaw).toLowerCase() === 'true' || String(enabledRaw) === '1';
+
+        if (!enabled) {
+            container.innerHTML = `<p class="text-sm text-gray-500">Backfill is disabled.</p>`;
+            return;
+        }
+
+        const start = this.getConfigValue(status, 'BACKFILL_START_DATE', null);
+        const end = this.getConfigValue(status, 'BACKFILL_END_DATE', null);
+        const daysBack = this.getConfigValue(status, 'BACKFILL_DAYS_BACK', null);
+        const duration = this.getConfigValue(status, 'BACKFILL_DURATION_DAYS', null);
+        const perDay = this.getConfigValue(status, 'BACKFILL_MAX_VISITS_PER_DAY', null);
+        const total = this.getConfigValue(status, 'BACKFILL_MAX_VISITS_TOTAL', null);
+        const rps = this.getConfigValue(status, 'BACKFILL_RPS_LIMIT', null);
+        const seed = this.getConfigValue(status, 'BACKFILL_SEED', null);
+
+        const windowText = (() => {
+            if (start && end) {
+                return `Absolute: ${start} → ${end}`;
+            }
+            if (daysBack && duration) {
+                return `Relative: ${daysBack} days back for ${duration} day(s)`;
+            }
+            return 'Window not fully specified';
+        })();
+
+        const capsText = `Caps: ${perDay || '—'} /day, total ${total || '—'}`;
+        const throttleText = rps ? `Throttle: ${rps} rps` : 'Throttle: default';
+        const seedText = seed || seed === 0 ? `Seed: ${seed}` : 'Seed: not set';
+
+        container.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">Backfill Enabled</span>
+            </div>
+            <p class="text-sm text-gray-700">${windowText}</p>
+            <p class="text-sm text-gray-700">${capsText}</p>
+            <p class="text-sm text-gray-700">${throttleText}</p>
+            <p class="text-sm text-gray-700">${seedText}</p>
+            <p class="text-xs text-gray-400">Dates and caps are validated on apply; check logs for per-day summaries.</p>
+        `;
     }
 
     // Show error state

@@ -221,3 +221,8 @@
 - tool: shell (python3 -m pytest matomo-load-baked/tests/test_backfill.py)
 - result: Tests passed (4 passed).
 - artifacts: none
+
+- tool: apply_patch (control-ui/static/index.html; control-ui/static/js/status.js)
+- args: Added Backfill Status panel on the Status tab and wired status parsing to show window type, caps, throttle, and seed when backfill is enabled; shows disabled state otherwise.
+- result: Users can see backfill activation/config summary directly in the Status tab using container env values.
+- artifacts: control-ui/static/index.html, control-ui/static/js/status.js
