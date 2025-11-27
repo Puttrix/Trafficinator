@@ -1351,7 +1351,7 @@ async def run_backfill(session, urls):
         days = compute_backfill_window(tz)
     except Exception as exc:
         logging.error("[backfill] Invalid configuration: %s", exc)
-        return
+        return []
 
     remaining_total = BACKFILL_MAX_VISITS_TOTAL if BACKFILL_MAX_VISITS_TOTAL > 0 else None
     per_day_cap = BACKFILL_MAX_VISITS_PER_DAY if BACKFILL_MAX_VISITS_PER_DAY > 0 else int(TARGET_VISITS_PER_DAY)
@@ -1382,6 +1382,7 @@ async def run_backfill(session, urls):
         summary.append({"date": str(day), "sent": sent, "target": day_target, "timezone": TIMEZONE})
 
     logging.info("[backfill] Complete: %s", summary)
+    return summary
 
 async def main():
     urls_file = resolve_urls_file()
