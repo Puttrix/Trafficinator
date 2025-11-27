@@ -1,3 +1,4 @@
+import asyncio
 import importlib.util
 import pathlib
 import sys
@@ -62,8 +63,7 @@ def test_compute_backfill_window_rejects_long_window():
         loader.compute_backfill_window(tz)
 
 
-@pytest.mark.asyncio
-async def test_run_backfill_respects_caps_and_seed(monkeypatch):
+def test_run_backfill_respects_caps_and_seed(monkeypatch):
     loader = load_loader()
     loader.BACKFILL_START_DATE = "2024-10-01"
     loader.BACKFILL_END_DATE = "2024-10-02"  # two days
@@ -81,7 +81,7 @@ async def test_run_backfill_respects_caps_and_seed(monkeypatch):
         return visits_target  # pretend we sent everything
 
     monkeypatch.setattr(loader, "run_backfill_day", fake_run_backfill_day)
-    summary = await loader.run_backfill(session=None, urls=["https://example.com"])
+    summary = asyncio.run(loader.run_backfill(session=None, urls=["https://example.com"]))
 
     assert len(summary) == 2
     assert summary[0]["target"] == 100

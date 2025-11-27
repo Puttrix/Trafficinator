@@ -217,3 +217,7 @@
 - args: Made backfill runner return summaries and added pytest coverage for backfill windows (absolute/relative guards) and caps/seed path with a stubbed run_backfill_day.
 - result: Backfill logic is testable; guardrails enforced via tests and backfill summary returned for assertions.
 - artifacts: matomo-load-baked/loader.py, matomo-load-baked/tests/test_backfill.py
+
+- tool: shell (python3 -m pytest matomo-load-baked/tests/test_backfill.py)
+- result: Tests passed (4 passed).
+- artifacts: none
