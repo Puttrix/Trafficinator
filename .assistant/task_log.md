@@ -181,3 +181,19 @@
 - tool: apply_patch (.assistant/backlog.md)
 - result: Added P-032 Historical backfill mode to backlog: date-ranged traffic replay (30–90 days), timezone-aware `cdt`, visits-per-day override, guardrails on date ranges, optional deterministic seeds.
 - artifacts: .assistant/backlog.md
+
+## 2025-11-27
+- tool: apply_patch (.assistant/status.md)
+- args: Refreshed status from backlog/task_log to emphasize P-008 multi-target focus, P-032 backfill planning, and CET/SEK default migrations.
+- result: Updated focus, Now/Next/Later, risks, artifacts, recent progress, and open questions to align with current backlog/task_log.
+- artifacts: .assistant/status.md
+
+- tool: apply_patch (.assistant/backlog.md)
+- args: Added detailed P-032 subtasks (backend schema/API, loader execution, UI, testing, docs).
+- result: Backlog now tracks the full breakdown for historical backfill mode.
+- artifacts: .assistant/backlog.md
+
+- tool: apply_patch (control-ui/config_validator.py; control-ui/models.py; control-ui/container_manager.py)
+- args: Introduced backfill config fields/validation (date windows, caps, seed, RPS), warnings, status model fields, and env mapping for API/apply flows.
+- result: Backend accepts and validates backfill settings with guardrails (window <=180d, no future dates, caps consistency) and exposes env mapping/status fields for upcoming UI/loader work.
+- artifacts: control-ui/config_validator.py, control-ui/models.py, control-ui/container_manager.py

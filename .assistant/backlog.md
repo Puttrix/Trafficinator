@@ -304,6 +304,12 @@
       tags: feature, data, matomo  priority: medium  est: 6h
       deps: P-006 (patterns), P-015 (backend)
       accepts: Backfill mode to generate timestamped visits over a configurable past window (e.g., 30–90 days) with timezone-aware `cdt`, optional visits-per-day override, guardrails on date ranges, and optional deterministic seeds for reruns.
+      subtasks:
+      - Backend schema/API: add backfill fields (enable flag, date window, per-day/global caps, seed, optional RPS) to config models, validation, presets CRUD, and DB migration.
+      - Loader execution: implement TZ-aware backfill loop with per-day/global caps, deterministic per-day seed, throttle, guardrails (future dates, >180d, 429/5xx abort) and per-day summary.
+      - Frontend UI: Config tab backfill section (toggle, date pickers or days_back+duration, caps, seed, RPS), status summary, presets persistence with CET/SEK migrations intact.
+      - Testing: schema/API round-trips, loader caps/seed/TZ boundary cases, integration smoke for backfill start/summary, UI validation and preset save/load.
+      - Docs: WEB_UI_GUIDE backfill section, presets/README env updates, assistant guides/status refresh if needed.
 
 ## Infrastructure
 - [ ] **P-011** Kubernetes manifests for k8s deployments
