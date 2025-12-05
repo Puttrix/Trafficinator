@@ -89,3 +89,30 @@ def test_run_backfill_respects_caps_and_seed(monkeypatch):
     assert captured[0][1] == 100
     assert captured[1][1] == 50
     assert captured[0][2] == 5.0
+
+
+def test_format_cdt_converts_to_utc():
+    """Verify format_cdt converts timezone-aware datetimes to UTC for Matomo."""
+    import pytz
+    from datetime import datetime
+    
+    loader = load_loader()
+    
+    # Test with CET timezone (UTC+1 in winter)
+    cet = pytz.timezone('CET')
+    local_dt = cet.localize(datetime(2025, 12, 1, 14, 30, 0))  # 14:30 CET
+    
+    result = loader.format_cdt(local_dt)
+    
+    # 14:30 CET = 13:30 UTC
+    assert result == "2025-12-01 13:30:00"
+    
+    # Test midnight CET -> 23:00 previous day UTC
+    midnight_cet = cet.localize(datetime(2025, 12, 1, 0, 0, 0))
+    result_midnight = loader.format_cdt(midnight_cet)
+    assert result_midnight == "2025-11-30 23:00:00"
+    
+    # Test with UTC timezone (no conversion needed)
+    utc_dt = pytz.UTC.localize(datetime(2025, 12, 1, 10, 0, 0))
+    result_utc = loader.format_cdt(utc_dt)
+    assert result_utc == "2025-12-01 10:00:00"

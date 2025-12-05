@@ -226,3 +226,24 @@
 - args: Added Backfill Status panel on the Status tab and wired status parsing to show window type, caps, throttle, and seed when backfill is enabled; shows disabled state otherwise.
 - result: Users can see backfill activation/config summary directly in the Status tab using container env values.
 - artifacts: control-ui/static/index.html, control-ui/static/js/status.js
+
+## 2025-12-05
+- tool: shell (cat > .assistant/status.md)
+- args: Refreshed status.md from backlog/task_log; P-032 complete, `develop` ahead of `main` by 5 commits.
+- result: Updated focus to PR creation, Now/Next/Later, artifacts list, recent progress with P-032 breakdown.
+- artifacts: .assistant/status.md
+
+- tool: mcp_github_github_create_pull_request
+- args: owner=Puttrix, repo=Trafficinator, title="feat: Historical backfill mode (P-032)", head=develop, base=main
+- result: PR #11 created successfully
+- artifacts: https://github.com/Puttrix/Trafficinator/pull/11
+
+- tool: apply_patch (matomo-load-baked/loader.py)
+- args: Added format_cdt() helper that converts timezone-aware datetimes to UTC before formatting; replaced all strftime calls for cdt param with format_cdt().
+- result: Fixed P-032 backfill bug where timestamps were sent in local timezone instead of UTC. Matomo expects cdt in UTC but we were sending CET times without conversion, causing visits to appear at wrong times.
+- artifacts: matomo-load-baked/loader.py
+
+- tool: apply_patch (matomo-load-baked/tests/test_backfill.py)
+- args: Added test_format_cdt_converts_to_utc() to verify CET→UTC conversion.
+- result: Test confirms 14:30 CET → 13:30 UTC and midnight CET → 23:00 previous day UTC.
+- artifacts: matomo-load-baked/tests/test_backfill.py

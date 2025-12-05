@@ -288,6 +288,21 @@ def day_bounds(day, tz):
     return start, end
 
 
+def format_cdt(dt):
+    """Format a datetime for Matomo's cdt parameter.
+    
+    Matomo expects cdt to be in UTC timezone. This function converts
+    timezone-aware datetimes to UTC before formatting.
+    """
+    if dt.tzinfo is not None:
+        # Convert to UTC
+        utc_dt = dt.astimezone(pytz.UTC)
+    else:
+        # Assume naive datetimes are already UTC
+        utc_dt = dt
+    return utc_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+
 def load_funnels_from_file(path: str) -> List[Dict[str, Any]]:
     """Load funnel definitions from JSON file."""
     if not path or not os.path.exists(path):
@@ -810,7 +825,7 @@ async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str], day_r
             'rec': 1,
             '_id': visit_id,
             'rand': random.randint(0, 2**31 - 1),
-            'cdt': current_dt.strftime('%Y-%m-%d %H:%M:%S'),
+            'cdt': format_cdt(current_dt),
             'url': page_url,
         }
 
@@ -1023,8 +1038,8 @@ async def visit(session, urls, day_range: Optional[tuple] = None):
         # Keep the original page URL (the page that contains any outlink/download)
         page_url = url
 
-        # Use the simulated timeline timestamp for this pageview
-        timestamp = pv_times[i].strftime('%Y-%m-%d %H:%M:%S')
+        # Use the simulated timeline timestamp for this pageview (converted to UTC for Matomo)
+        timestamp = format_cdt(pv_times[i])
 
         params = {
             'idsite': SITE_ID,
@@ -1169,7 +1184,7 @@ async def visit(session, urls, day_range: Optional[tuple] = None):
     try:
         last_pv_time = pv_times[-1]
         last_pv_id = pv_ids[-1]
-        last_page_timestamp = (last_pv_time + timedelta(seconds=dwell_times[-1])).strftime('%Y-%m-%d %H:%M:%S')
+        last_page_timestamp = format_cdt(last_pv_time + timedelta(seconds=dwell_times[-1]))
 
         ping_params = {
             'idsite': SITE_ID,
