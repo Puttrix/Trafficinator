@@ -36,15 +36,19 @@
 ---
 
 ## Recent Progress
+- **P-032 Bug Fix:** Fixed critical backfill issue where timestamps were sent in local timezone instead of UTC
+  - Root cause: Matomo `cdt` parameter expects UTC, but we were sending CET times
+  - Solution: Added `format_cdt()` helper that converts timezone-aware datetimes to UTC
+  - Test: `test_format_cdt_converts_to_utc()` confirms 14:30 CET → 13:30 UTC
 - **P-032 Complete:** Historical backfill mode delivered end-to-end:
   - Config validation (date windows ≤180d, no future dates, caps, TZ guards, seed/RPS)
   - Env mapping and status model fields
   - UI: Config tab Backfill section, Status tab Backfill panel
   - Loader: TZ-aware backfill loop, per-day/global caps, deterministic seeds, optional RPS
-  - Tests: pytest coverage for window guardrails and caps (4 tests)
+  - Tests: pytest coverage for window guardrails and caps (5 tests)
   - Docs: WEB_UI_GUIDE and presets/README updated
-- `develop` branch ahead of `main` by 5 commits (backfill feature)
-- No open PRs; no uncommitted changes
+- `develop` branch ahead of `main` by 6 commits (backfill feature + UTC fix)
+- PR #11 updated with fix
 
 ---
 
