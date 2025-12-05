@@ -6,9 +6,15 @@ Validates load generator configuration and tests Matomo connectivity.
 import re
 import aiohttp
 import asyncio
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - fallback for older Python versions
+    ZoneInfo = None
 
 
 class ConfigValidationError(BaseModel):
@@ -78,6 +84,20 @@ class LoadGeneratorConfig(BaseModel):
     
     # Timezone
     timezone: str = Field("CET")
+
+    # Backfill (historical replay)
+    backfill_enabled: bool = Field(False)
+    backfill_start_date: Optional[str] = None
+    backfill_end_date: Optional[str] = None
+    backfill_days_back: Optional[int] = Field(None, ge=1, le=365)
+    backfill_duration_days: Optional[int] = Field(None, ge=1, le=365)
+    backfill_max_visits_per_day: Optional[int] = Field(2000, ge=1, le=10000)
+    backfill_max_visits_total: Optional[int] = Field(200000, ge=1, le=10000000)
+    backfill_rps_limit: Optional[float] = Field(None, gt=0, le=500)
+    backfill_seed: Optional[int] = Field(None, ge=0, le=2**31 - 1)
+
+    # Derived/normalized values (excluded from output)
+    backfill_window_days: Optional[int] = Field(default=None, exclude=True)
     
     @field_validator("matomo_url")
     @classmethod
@@ -106,6 +126,25 @@ class LoadGeneratorConfig(BaseModel):
         if not re.match(r'^[A-Z]{3}$', v):
             raise ValueError("Currency code must be 3 uppercase letters")
         return v
+
+    @staticmethod
+    def _parse_date(value: str, field: str) -> date:
+        """Parse ISO date strings"""
+        try:
+            return date.fromisoformat(value)
+        except Exception:
+            raise ValueError(f"{field} must be in YYYY-MM-DD format")
+
+    @staticmethod
+    def _get_timezone(tz_name: str):
+        """Resolve timezone name to tzinfo"""
+        if ZoneInfo:
+            try:
+                return ZoneInfo(tz_name)
+            except Exception:
+                pass
+        # Fallback to UTC when unknown
+        return timezone.utc
     
     @model_validator(mode='after')
     def validate_ranges(self) -> 'LoadGeneratorConfig':
@@ -118,6 +157,49 @@ class LoadGeneratorConfig(BaseModel):
             raise ValueError("visit_duration_min cannot be greater than visit_duration_max")
         if self.ecommerce_order_value_min > self.ecommerce_order_value_max:
             raise ValueError("ecommerce_order_value_min cannot be greater than ecommerce_order_value_max")
+
+        # Backfill validation
+        if self.backfill_enabled:
+            tzinfo = self._get_timezone(self.timezone)
+            today = datetime.now(tzinfo).date()
+
+            start_date: Optional[date] = None
+            end_date: Optional[date] = None
+
+            has_absolute = self.backfill_start_date or self.backfill_end_date
+            has_relative = self.backfill_days_back or self.backfill_duration_days
+
+            if has_absolute and has_relative:
+                raise ValueError("Provide either start/end dates or days_back + duration, not both")
+
+            if has_absolute:
+                if not (self.backfill_start_date and self.backfill_end_date):
+                    raise ValueError("Both backfill_start_date and backfill_end_date are required when using date range")
+                start_date = self._parse_date(self.backfill_start_date, "backfill_start_date")
+                end_date = self._parse_date(self.backfill_end_date, "backfill_end_date")
+            elif has_relative:
+                if not (self.backfill_days_back and self.backfill_duration_days):
+                    raise ValueError("backfill_days_back and backfill_duration_days must both be set when using relative window")
+                # backfill_days_back of 1 = yesterday
+                start_date = today - timedelta(days=self.backfill_days_back)
+                end_date = start_date + timedelta(days=self.backfill_duration_days - 1)
+            else:
+                raise ValueError("Backfill window required: provide start/end dates or days_back + duration")
+
+            if start_date > end_date:
+                raise ValueError("Backfill start date must be on or before end date")
+            if end_date > today:
+                raise ValueError("Backfill end date cannot be in the future")
+
+            window_days = (end_date - start_date).days + 1
+            if window_days > 180:
+                raise ValueError("Backfill window cannot exceed 180 days")
+
+            if self.backfill_max_visits_total and self.backfill_max_visits_per_day:
+                if self.backfill_max_visits_total < self.backfill_max_visits_per_day:
+                    raise ValueError("BACKFILL_MAX_VISITS_TOTAL must be >= BACKFILL_MAX_VISITS_PER_DAY")
+
+            self.backfill_window_days = window_days
         return self
 
 
@@ -175,6 +257,30 @@ class ConfigValidator:
                     message="No auto-stop configured. Load generator will run indefinitely until manually stopped",
                     severity="warning"
                 ))
+
+            # Backfill guardrails and advisories
+            if validated_config.backfill_enabled:
+                window_days = validated_config.backfill_window_days or 0
+                if window_days > 90:
+                    warnings.append(ConfigValidationError(
+                        field="backfill_window",
+                        message=f"Long backfill window ({window_days} days). Consider smaller batches (<=90 days) to reduce load and error risk.",
+                        severity="warning"
+                    ))
+
+                if validated_config.backfill_max_visits_per_day and validated_config.backfill_max_visits_per_day > 8000:
+                    warnings.append(ConfigValidationError(
+                        field="backfill_max_visits_per_day",
+                        message=f"High per-day backfill cap ({validated_config.backfill_max_visits_per_day:,}). Monitor Matomo for rate limiting.",
+                        severity="warning"
+                    ))
+
+                if validated_config.backfill_rps_limit and validated_config.backfill_rps_limit > 100:
+                    warnings.append(ConfigValidationError(
+                        field="backfill_rps_limit",
+                        message=f"High backfill RPS limit ({validated_config.backfill_rps_limit}). Consider lowering to avoid HTTP 429/5xx.",
+                        severity="warning"
+                    ))
             
             return ConfigValidationResult(
                 valid=len(errors) == 0,

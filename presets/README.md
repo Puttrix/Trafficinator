@@ -31,3 +31,16 @@ docker compose -f docker-compose.webui.yml --env-file presets/.env.heavy up -d
 ```
 
 Each preset mirrors the values shown in the Control UI’s Presets tab. Feel free to duplicate and customise them for additional tiers.
+
+### Backfill (optional)
+
+Backfill is off by default. To enable historical replay, add these env vars to your `.env` (or set via the Control UI):
+
+- `BACKFILL_ENABLED=true`
+- One of:
+  - `BACKFILL_START_DATE=2024-10-01` and `BACKFILL_END_DATE=2024-10-31`
+  - `BACKFILL_DAYS_BACK=30` and `BACKFILL_DURATION_DAYS=30`
+- Caps: `BACKFILL_MAX_VISITS_PER_DAY=2000` (max 10000), `BACKFILL_MAX_VISITS_TOTAL=200000` (0 to disable)
+- Optional: `BACKFILL_RPS_LIMIT=25`, `BACKFILL_SEED=42`
+
+Guards: windows must end on/before today, max 180 days; total cap must be ≥ per-day cap.

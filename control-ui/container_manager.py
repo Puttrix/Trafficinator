@@ -261,6 +261,15 @@ class ContainerManager:
             'ecommerce_order_value_max': 'ECOMMERCE_ORDER_VALUE_MAX',
             'ecommerce_currency': 'ECOMMERCE_CURRENCY',
             'timezone': 'TIMEZONE',
+            'backfill_enabled': 'BACKFILL_ENABLED',
+            'backfill_start_date': 'BACKFILL_START_DATE',
+            'backfill_end_date': 'BACKFILL_END_DATE',
+            'backfill_days_back': 'BACKFILL_DAYS_BACK',
+            'backfill_duration_days': 'BACKFILL_DURATION_DAYS',
+            'backfill_max_visits_per_day': 'BACKFILL_MAX_VISITS_PER_DAY',
+            'backfill_max_visits_total': 'BACKFILL_MAX_VISITS_TOTAL',
+            'backfill_rps_limit': 'BACKFILL_RPS_LIMIT',
+            'backfill_seed': 'BACKFILL_SEED',
         }
         
         for config_key, env_key in key_mapping.items():

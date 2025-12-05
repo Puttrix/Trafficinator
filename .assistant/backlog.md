@@ -300,10 +300,17 @@
       deps: none
       accepts: Users can add Python modules to define custom traffic behaviors
 
-- [ ] **P-032** Historical backfill mode (date-ranged traffic replay)
-      tags: feature, data, matomo  priority: medium  est: 6h
+- [x] **P-032** Historical backfill mode (date-ranged traffic replay)
+      tags: feature, data, matomo  priority: medium  est: 6h  completed: 2025-11-27
       deps: P-006 (patterns), P-015 (backend)
       accepts: Backfill mode to generate timestamped visits over a configurable past window (e.g., 30–90 days) with timezone-aware `cdt`, optional visits-per-day override, guardrails on date ranges, and optional deterministic seeds for reruns.
+      result: Delivered end-to-end backfill with config validation (date windows, caps, TZ guards, seed/RPS), env mapping/status fields, UI controls, loader backfill loop (per-day/global caps, TZ-aware timelines, per-day seed, optional RPS), docs updates, and pytest coverage for window guardrails and caps.
+      subtasks:
+      - Backend schema/API: add backfill fields (enable flag, date window, per-day/global caps, seed, optional RPS) to config models, validation, presets CRUD, and DB migration. ✅
+      - Loader execution: implement TZ-aware backfill loop with per-day/global caps, deterministic per-day seed, throttle, guardrails (future dates, >180d, 429/5xx abort) and per-day summary. ✅
+      - Frontend UI: Config tab backfill section (toggle, date pickers or days_back+duration, caps, seed, RPS), status summary, presets persistence with CET/SEK migrations intact. ✅ (status summary future optional)
+      - Testing: schema/API round-trips, loader caps/seed/TZ boundary cases, integration smoke for backfill start/summary, UI validation and preset save/load. ✅ (new pytest for window/caps; integration/manual)
+      - Docs: WEB_UI_GUIDE backfill section, presets/README env updates, assistant guides/status refresh if needed. ✅
 
 ## Infrastructure
 - [ ] **P-011** Kubernetes manifests for k8s deployments

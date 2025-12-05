@@ -70,6 +70,19 @@ ECOMMERCE_CURRENCY = os.environ.get("ECOMMERCE_CURRENCY", "SEK")  # Currency cod
 # Timezone configuration
 TIMEZONE = os.environ.get("TIMEZONE", "CET")  # Timezone for visit timestamps
 
+# Backfill (historical replay) configuration
+BACKFILL_ENABLED = os.environ.get("BACKFILL_ENABLED", "false").lower() == "true"
+BACKFILL_START_DATE = os.environ.get("BACKFILL_START_DATE")
+BACKFILL_END_DATE = os.environ.get("BACKFILL_END_DATE")
+BACKFILL_DAYS_BACK = os.environ.get("BACKFILL_DAYS_BACK")
+BACKFILL_DURATION_DAYS = os.environ.get("BACKFILL_DURATION_DAYS")
+BACKFILL_MAX_VISITS_PER_DAY = int(os.environ.get("BACKFILL_MAX_VISITS_PER_DAY", "2000"))
+BACKFILL_MAX_VISITS_TOTAL = int(os.environ.get("BACKFILL_MAX_VISITS_TOTAL", "200000"))
+BACKFILL_RPS_LIMIT = os.environ.get("BACKFILL_RPS_LIMIT")
+BACKFILL_RPS_LIMIT = float(BACKFILL_RPS_LIMIT) if BACKFILL_RPS_LIMIT else None
+BACKFILL_SEED = os.environ.get("BACKFILL_SEED")
+BACKFILL_SEED = int(BACKFILL_SEED) if BACKFILL_SEED is not None else None
+
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
@@ -215,6 +228,79 @@ SUPPORTED_FUNNEL_STEP_TYPES = {
     'download',
     'ecommerce',
 }
+
+
+def resolve_timezone():
+    """Return a pytz timezone object, defaulting to UTC on error."""
+    try:
+        return pytz.timezone(TIMEZONE)
+    except Exception:
+        logging.warning("Unknown timezone '%s', falling back to UTC", TIMEZONE)
+        return pytz.UTC
+
+
+def _parse_date_str(value: str, field: str):
+    """Parse YYYY-MM-DD into a date."""
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except Exception:
+        raise ValueError(f"{field} must be YYYY-MM-DD")
+
+
+def compute_backfill_window(tz) -> List[datetime.date]:
+    """Compute the list of dates to backfill (inclusive)."""
+    has_absolute = BACKFILL_START_DATE or BACKFILL_END_DATE
+    has_relative = BACKFILL_DAYS_BACK or BACKFILL_DURATION_DAYS
+
+    if has_absolute and has_relative:
+        raise ValueError("Provide either absolute dates or days_back + duration, not both")
+
+    today = datetime.now(tz).date()
+    if has_absolute:
+        if not (BACKFILL_START_DATE and BACKFILL_END_DATE):
+            raise ValueError("BACKFILL_START_DATE and BACKFILL_END_DATE are both required")
+        start = _parse_date_str(BACKFILL_START_DATE, "BACKFILL_START_DATE")
+        end = _parse_date_str(BACKFILL_END_DATE, "BACKFILL_END_DATE")
+    elif has_relative:
+        if not (BACKFILL_DAYS_BACK and BACKFILL_DURATION_DAYS):
+            raise ValueError("BACKFILL_DAYS_BACK and BACKFILL_DURATION_DAYS must both be set")
+        start = today - timedelta(days=int(BACKFILL_DAYS_BACK))
+        end = start + timedelta(days=int(BACKFILL_DURATION_DAYS) - 1)
+    else:
+        raise ValueError("Backfill window required: set start/end dates or days_back + duration")
+
+    if start > end:
+        raise ValueError("Backfill start date must be on or before end date")
+    if end > today:
+        raise ValueError("Backfill end date cannot be in the future")
+
+    window_days = (end - start).days + 1
+    if window_days > 180:
+        raise ValueError("Backfill window cannot exceed 180 days")
+
+    return [start + timedelta(days=i) for i in range(window_days)]
+
+
+def day_bounds(day, tz):
+    """Return start/end datetimes for a given date in the provided timezone."""
+    start = tz.localize(datetime(day.year, day.month, day.day, 0, 0, 0))
+    end = start + timedelta(days=1) - timedelta(seconds=1)
+    return start, end
+
+
+def format_cdt(dt):
+    """Format a datetime for Matomo's cdt parameter.
+    
+    Matomo expects cdt to be in UTC timezone. This function converts
+    timezone-aware datetimes to UTC before formatting.
+    """
+    if dt.tzinfo is not None:
+        # Convert to UTC
+        utc_dt = dt.astimezone(pytz.UTC)
+    else:
+        # Assume naive datetimes are already UTC
+        utc_dt = dt
+    return utc_dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
 def load_funnels_from_file(path: str) -> List[Dict[str, Any]]:
@@ -686,7 +772,7 @@ def _generate_funnel_order(step: Dict[str, Any]):
     return order_id, items_json, revenue, subtotal, tax, shipping
 
 
-async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str]) -> bool:
+async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str], day_range: Optional[tuple] = None) -> bool:
     """
     Execute a funnel sequence. Returns True if the visit should end after completion.
     """
@@ -710,21 +796,21 @@ async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str]) -> bo
             max_delay = min_delay
         delays.append(random.uniform(min_delay, max_delay))
 
-    # Establish timeline so the final step ends near "now"
-    if TIMEZONE != "UTC":
-        try:
-            tz = pytz.timezone(TIMEZONE)
-            now_dt = datetime.now(tz)
-        except pytz.UnknownTimeZoneError:
-            logging.warning("Unknown timezone '%s', falling back to UTC", TIMEZONE)
-            tz = pytz.UTC
-            now_dt = datetime.utcnow().replace(tzinfo=tz)
-    else:
-        tz = pytz.UTC
-        now_dt = datetime.utcnow().replace(tzinfo=tz)
-
+    tz = resolve_timezone()
     total_duration = sum(delays)
-    current_dt = now_dt - timedelta(seconds=total_duration)
+
+    if day_range:
+        day_start, day_end = day_range
+        seconds_available = max(1, int((day_end - day_start).total_seconds()))
+        earliest_start = day_start
+        latest_start = day_end - timedelta(seconds=total_duration)
+        if latest_start < earliest_start:
+            latest_start = earliest_start
+        offset = random.uniform(0, max(0, (latest_start - earliest_start).total_seconds()))
+        current_dt = earliest_start + timedelta(seconds=offset)
+    else:
+        now_dt = datetime.now(tz)
+        current_dt = now_dt - timedelta(seconds=total_duration)
     last_page_url: Optional[str] = None
 
     for index, step in enumerate(steps):
@@ -739,7 +825,7 @@ async def execute_funnel(session, funnel: Dict[str, Any], urls: List[str]) -> bo
             'rec': 1,
             '_id': visit_id,
             'rand': random.randint(0, 2**31 - 1),
-            'cdt': current_dt.strftime('%Y-%m-%d %H:%M:%S'),
+            'cdt': format_cdt(current_dt),
             'url': page_url,
         }
 
@@ -875,10 +961,10 @@ async def send_hit(session, params, headers):
     except Exception:
         return None
 
-async def visit(session, urls):
+async def visit(session, urls, day_range: Optional[tuple] = None):
     funnel = select_funnel()
     if funnel:
-        exit_after = await execute_funnel(session, funnel, urls)
+        exit_after = await execute_funnel(session, funnel, urls, day_range)
         if exit_after:
             return
 
@@ -920,21 +1006,22 @@ async def visit(session, urls):
     total_weight = sum(weights)
     dwell_times = [(visit_duration_seconds * w / total_weight) for w in weights]
 
-    # Establish a timezone-aware base time so the last dwell ends at "now" in the chosen timezone.
-    if TIMEZONE != "UTC":
-        try:
-            tz = pytz.timezone(TIMEZONE)
-            now_dt = datetime.now(tz)
-        except pytz.UnknownTimeZoneError:
-            logging.warning(f"Unknown timezone '{TIMEZONE}', falling back to UTC")
-            tz = pytz.UTC
-            now_dt = datetime.utcnow().replace(tzinfo=tz)
-    else:
-        tz = pytz.UTC
-        now_dt = datetime.utcnow().replace(tzinfo=tz)
+    tz = resolve_timezone()
+    day_start = None
+    day_end = None
+    if day_range:
+        day_start, day_end = day_range
 
-    # The first pageview occurs at start_dt; last dwell ends at now_dt
-    start_dt = now_dt - timedelta(seconds=visit_duration_seconds)
+    if day_start and day_end:
+        seconds_available = max(1, int((day_end - day_start).total_seconds()))
+        latest_start = day_end - timedelta(seconds=visit_duration_seconds)
+        if latest_start < day_start:
+            latest_start = day_start
+        offset = random.uniform(0, max(0, (latest_start - day_start).total_seconds()))
+        start_dt = day_start + timedelta(seconds=offset)
+    else:
+        now_dt = datetime.now(tz)
+        start_dt = now_dt - timedelta(seconds=visit_duration_seconds)
 
     # Precompute the pageview timestamps and pageview IDs
     pv_times = []
@@ -951,8 +1038,8 @@ async def visit(session, urls):
         # Keep the original page URL (the page that contains any outlink/download)
         page_url = url
 
-        # Use the simulated timeline timestamp for this pageview
-        timestamp = pv_times[i].strftime('%Y-%m-%d %H:%M:%S')
+        # Use the simulated timeline timestamp for this pageview (converted to UTC for Matomo)
+        timestamp = format_cdt(pv_times[i])
 
         params = {
             'idsite': SITE_ID,
@@ -1097,7 +1184,7 @@ async def visit(session, urls):
     try:
         last_pv_time = pv_times[-1]
         last_pv_id = pv_ids[-1]
-        last_page_timestamp = (last_pv_time + timedelta(seconds=dwell_times[-1])).strftime('%Y-%m-%d %H:%M:%S')
+        last_page_timestamp = format_cdt(last_pv_time + timedelta(seconds=dwell_times[-1]))
 
         ping_params = {
             'idsite': SITE_ID,
@@ -1126,112 +1213,203 @@ class GracefulExit(SystemExit):
 def _handle_sig(*_):
     raise GracefulExit()
 
+
+async def run_realtime(session, urls):
+    """Realtime load generation loop (existing behavior)."""
+    visits_per_sec = TARGET_VISITS_PER_DAY / 86400.0
+    tokens = 0.0
+    last = time.time()
+
+    q = asyncio.Queue(maxsize=CONCURRENCY * 2)
+
+    start_ts = time.time()
+    visits_total = 0
+    visits_today = 0
+    day_window_start = start_ts
+
+    async def producer():
+        nonlocal tokens, last, visits_today
+        while True:
+            if AUTO_STOP_AFTER_HOURS > 0 and (time.time() - start_ts) >= AUTO_STOP_AFTER_HOURS * 3600:
+                await q.put(None)
+                await asyncio.sleep(0.1)
+                break
+
+            now = time.time()
+            dt = now - last
+            last = now
+            tokens += visits_per_sec * dt
+            if tokens > CONCURRENCY:
+                tokens = CONCURRENCY
+
+            if MAX_TOTAL_VISITS > 0:
+                should_pause, new_day_start, new_visits_today = check_daily_cap(now, day_window_start, visits_today, MAX_TOTAL_VISITS)
+                day_window_start = new_day_start
+                visits_today = new_visits_today
+                if should_pause:
+                    logging.info('[loadgen] daily cap reached (%d). Pausing until window resets.', MAX_TOTAL_VISITS)
+                    await asyncio.sleep(5)
+                    continue
+
+            while tokens >= 1 and not q.full():
+                await q.put(1)
+                tokens -= 1
+
+            await asyncio.sleep(0.25)
+
+    async def worker():
+        nonlocal visits_total, visits_today
+        while True:
+            job = await q.get()
+            if job is None:
+                q.task_done()
+                break
+            try:
+                await visit(session, urls)
+            except Exception:
+                pass
+            finally:
+                visits_total += 1
+                visits_today += 1
+                q.task_done()
+
+    workers = [asyncio.create_task(worker()) for _ in range(CONCURRENCY)]
+    prod = asyncio.create_task(producer())
+
+    last_log = time.time()
+    try:
+        while True:
+            await asyncio.sleep(10)
+            if AUTO_STOP_AFTER_HOURS > 0 and (time.time() - start_ts) >= AUTO_STOP_AFTER_HOURS * 3600:
+                break
+            if MAX_TOTAL_VISITS > 0 and visits_total >= MAX_TOTAL_VISITS:
+                break
+
+            now = time.time()
+            if now - last_log >= 60:
+                print(f"[loadgen] visits_total={visits_total}")
+                last_log = now
+    except GracefulExit:
+        print("[loadgen] Shutting down...")
+    finally:
+        prod.cancel()
+        for w in workers:
+            w.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+        await asyncio.gather(prod, return_exceptions=True)
+
+    elapsed = time.time() - start_ts
+    rate = visits_total / elapsed if elapsed > 0 else 0.0
+    print(f"[loadgen] Done. Sent {visits_total} visits in {elapsed:.1f}s (~{rate*86400:.0f}/day).")
+
+
+async def run_backfill_day(session, urls, day_range: tuple, visits_target: int, rps_limit: Optional[float]):
+    """Run backfill for a single day window."""
+    tokens = 0.0
+    last = time.time()
+    rate_limit = rps_limit if rps_limit else TARGET_VISITS_PER_DAY / 86400.0
+
+    q = asyncio.Queue(maxsize=CONCURRENCY * 2)
+    visits_total = 0
+    visits_scheduled = 0
+
+    async def producer():
+        nonlocal tokens, last, visits_scheduled
+        while visits_scheduled < visits_target:
+            now = time.time()
+            dt = now - last
+            last = now
+            tokens += rate_limit * dt
+            if tokens > CONCURRENCY:
+                tokens = CONCURRENCY
+
+            while tokens >= 1 and not q.full() and visits_scheduled < visits_target:
+                await q.put(1)
+                tokens -= 1
+                visits_scheduled += 1
+
+            await asyncio.sleep(0.2)
+
+        for _ in range(CONCURRENCY):
+            await q.put(None)
+
+    async def worker():
+        nonlocal visits_total
+        while True:
+            job = await q.get()
+            if job is None:
+                q.task_done()
+                break
+            try:
+                await visit(session, urls, day_range)
+            except Exception:
+                pass
+            finally:
+                visits_total += 1
+                q.task_done()
+
+    workers = [asyncio.create_task(worker()) for _ in range(CONCURRENCY)]
+    prod = asyncio.create_task(producer())
+    try:
+        await asyncio.gather(*workers)
+    finally:
+        prod.cancel()
+        await asyncio.gather(prod, return_exceptions=True)
+
+    return visits_total
+
+
+async def run_backfill(session, urls):
+    """Historical backfill loop with per-day caps and TZ-aware dates."""
+    tz = resolve_timezone()
+    try:
+        days = compute_backfill_window(tz)
+    except Exception as exc:
+        logging.error("[backfill] Invalid configuration: %s", exc)
+        return []
+
+    remaining_total = BACKFILL_MAX_VISITS_TOTAL if BACKFILL_MAX_VISITS_TOTAL > 0 else None
+    per_day_cap = BACKFILL_MAX_VISITS_PER_DAY if BACKFILL_MAX_VISITS_PER_DAY > 0 else int(TARGET_VISITS_PER_DAY)
+    summary: List[Dict[str, Any]] = []
+
+    for idx, day in enumerate(days):
+        if remaining_total is not None and remaining_total <= 0:
+            summary.append({"date": str(day), "sent": 0, "skipped": True, "reason": "total_cap_reached"})
+            continue
+
+        if BACKFILL_SEED is not None:
+            random.seed(BACKFILL_SEED + idx)
+
+        day_start, day_end = day_bounds(day, tz)
+        day_target = per_day_cap
+        if remaining_total is not None:
+            day_target = min(day_target, remaining_total)
+
+        if day_target <= 0:
+            summary.append({"date": str(day), "sent": 0, "skipped": True, "reason": "cap_zero"})
+            continue
+
+        logging.info("[backfill] Replaying %d visits for %s (%s)", day_target, day, TIMEZONE)
+        sent = await run_backfill_day(session, urls, (day_start, day_end), day_target, BACKFILL_RPS_LIMIT)
+        if remaining_total is not None:
+            remaining_total -= sent
+
+        summary.append({"date": str(day), "sent": sent, "target": day_target, "timezone": TIMEZONE})
+
+    logging.info("[backfill] Complete: %s", summary)
+    return summary
+
 async def main():
     urls_file = resolve_urls_file()
     urls = read_urls(urls_file)
 
-    # Target rate in visits/sec
-    visits_per_sec = TARGET_VISITS_PER_DAY / 86400.0
-    # Simple token-bucket scheduler to smooth traffic
-    tokens = 0.0
-    last = time.time()
-
     connector = aiohttp.TCPConnector(limit=CONCURRENCY, ssl=False)
     timeout = aiohttp.ClientTimeout(total=None)
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-        q = asyncio.Queue(maxsize=CONCURRENCY * 2)
-
-        # Auto-stop timers/limits
-        start_ts = time.time()
-        visits_total = 0
-        # Per-24h counter for MAX_TOTAL_VISITS
-        visits_today = 0
-        day_window_start = start_ts
-
-        async def producer():
-            nonlocal tokens, last
-            while True:
-                # Check auto-stop by time
-                if AUTO_STOP_AFTER_HOURS > 0 and (time.time() - start_ts) >= AUTO_STOP_AFTER_HOURS * 3600:
-                    await q.put(None)  # sentinel to tell workers to quit
-                    await asyncio.sleep(0.1)
-                    break
-
-                # Refill tokens
-                now = time.time()
-                dt = now - last
-                last = now
-                tokens += visits_per_sec * dt
-                if tokens > CONCURRENCY:
-                    tokens = CONCURRENCY
-
-                produced = 0
-                # If a daily cap is configured, use the check_daily_cap helper
-                if MAX_TOTAL_VISITS > 0:
-                    should_pause, new_day_start, new_visits_today = check_daily_cap(now, day_window_start, visits_today, MAX_TOTAL_VISITS)
-                    day_window_start = new_day_start
-                    visits_today = new_visits_today
-                    if should_pause:
-                        logging.info('[loadgen] daily cap reached (%d). Pausing production until window reset.', MAX_TOTAL_VISITS)
-                        # Sleep for a short interval to avoid busy-looping while paused
-                        await asyncio.sleep(5)
-                        continue
-
-                while tokens >= 1 and not q.full():
-                    await q.put(1)
-                    tokens -= 1
-                    produced += 1
-                
-
-                await asyncio.sleep(0.25)
-
-        async def worker():
-            nonlocal visits_total, visits_today
-            while True:
-                job = await q.get()
-                if job is None:
-                    q.task_done()
-                    break
-                try:
-                    await visit(session, urls)
-                except Exception:
-                    pass
-                finally:
-                    visits_total += 1
-                    visits_today += 1
-                    q.task_done()
-
-        workers = [asyncio.create_task(worker()) for _ in range(CONCURRENCY)]
-        prod = asyncio.create_task(producer())
-
-        last_log = time.time()
-        try:
-            while True:
-                await asyncio.sleep(10)
-                # Exit conditions
-                if AUTO_STOP_AFTER_HOURS > 0 and (time.time() - start_ts) >= AUTO_STOP_AFTER_HOURS * 3600:
-                    break
-                if MAX_TOTAL_VISITS > 0 and visits_total >= MAX_TOTAL_VISITS:
-                    break
-
-                now = time.time()
-                if now - last_log >= 60:
-                    # estimate: visits in the last minute -> multiply to daily rate
-                    print(f"[loadgen] visits_total={visits_total}")
-                    last_log = now
-        except GracefulExit:
-            print("[loadgen] Shutting down...")
-        finally:
-            prod.cancel()
-            for w in workers:
-                w.cancel()
-            await asyncio.gather(*workers, return_exceptions=True)
-            await asyncio.gather(prod, return_exceptions=True)
-
-    # Print final summary
-    elapsed = time.time() - start_ts
-    rate = visits_total / elapsed if elapsed > 0 else 0.0
-    print(f"[loadgen] Done. Sent {visits_total} visits in {elapsed:.1f}s (~{rate*86400:.0f}/day).")
+        if BACKFILL_ENABLED:
+            await run_backfill(session, urls)
+        else:
+            await run_realtime(session, urls)
 
 if __name__ == "__main__":
     for sig in (signal.SIGINT, signal.SIGTERM):

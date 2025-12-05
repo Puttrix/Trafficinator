@@ -149,6 +149,7 @@ The Web UI consists of 5 main tabs:
   - **Visit Behavior** - Duration, pauses, probabilities
   - **E-commerce** - Order values, currency
   - **System** - Timezone, auto-stop, limits
+  - **Backfill (Historical Replay)** - Date-ranged replay with caps, throttle, and deterministic seed
 - **Real-time Validation** - Instant feedback on invalid values
 - **Test Connection** - Verify Matomo accessibility
 - **Conditional Fields** - E-commerce fields appear when enabled
@@ -165,6 +166,16 @@ The Web UI consists of 5 main tabs:
 7. Click "Apply Configuration" to save
 8. Restart container for changes to take effect
 ```
+
+**Backfill (Historical Replay):**
+```
+1) Toggle “Enable Backfill” to switch from realtime to historical replay.
+2) Choose either absolute dates (start/end) or a relative window (days back + duration). Do not mix both.
+3) Set caps: Max visits/day (default 2,000, max 10,000) and Max visits total (default 200k; 0 disables).
+4) Optionally set RPS limit to throttle requests and a deterministic seed for repeatable runs (per-day offset applied).
+5) Keep TIMEZONE aligned with Matomo; dates are enforced TZ-aware with guards against future dates and >180-day windows (warning above 90).
+```
+Guardrails: window must end on/before today; start <= end; max 180 days; caps must be consistent (total ≥ per-day); warnings on very high per-day caps and RPS.
 
 **Field Reference:**
 
