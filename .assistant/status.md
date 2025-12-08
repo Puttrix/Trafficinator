@@ -36,6 +36,7 @@
 ---
 
 ## Recent Progress
+- **P-033 UI:** Added Backfill tab to run one-off backfill via `/api/backfill/run` (ephemeral container, run-once).
 - **P-033 kickoff:** Added one-off backfill flow backend — new `/api/backfill/run` endpoint launches ephemeral backfill container (no main config mutation); loader supports `BACKFILL_RUN_ONCE` and idles after run to avoid restart loops.
 - **Startup Control:** Added `AUTO_START`/`START_SIGNAL_FILE` gating so webui deployments keep the generator idle until Start is triggered; Control UI start/restart now writes the start signal; loader waits for the flag; tests added.
 - **P-032 Bug Fix:** Added `format_cdt()` to send Matomo `cdt` in UTC; tests confirm CET→UTC conversion.

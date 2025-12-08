@@ -61,6 +61,9 @@
                 <button data-tab="config" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
                     Configuration
                 </button>
+                <button data-tab="backfill" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Backfill (One-off)
+                </button>
                 <button data-tab="presets" class="tab-button px-1 py-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
                     Load Presets
                 </button>
@@ -248,6 +251,124 @@
                 <div id="status-saved-presets" class="p-6 space-y-3 text-sm text-gray-600">
                     <p class="text-sm text-gray-500">No saved presets yet.</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Backfill -->
+        <div id="tab-backfill" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">Backfill (One-off run)</h2>
+                            <p class="text-sm text-gray-500 mt-1">Prepare and launch a historical replay without changing the main config.</p>
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            Uses the current Matomo target/env; spawns an ephemeral backfill container with <code class="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">BACKFILL_RUN_ONCE=true</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <form id="backfill-form" class="p-6 space-y-6">
+                    <div id="backfill-error" class="hidden border border-red-200 bg-red-50 text-red-700 text-sm rounded-lg px-4 py-3"></div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_start_date">Start Date (YYYY-MM-DD)</label>
+                            <input id="backfill_start_date" name="backfill_start_date" type="text" placeholder="2025-01-01"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <p class="text-xs text-gray-500">Absolute mode: requires start + end; do not combine with relative mode.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_end_date">End Date (YYYY-MM-DD)</label>
+                            <input id="backfill_end_date" name="backfill_end_date" type="text" placeholder="2025-01-07"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <p class="text-xs text-gray-500">No future dates; window must be ≤180 days.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_days_back">Days Back (relative)</label>
+                            <input id="backfill_days_back" name="backfill_days_back" type="number" min="1" placeholder="30"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <p class="text-xs text-gray-500">Relative mode: requires days back + duration; do not combine with absolute.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_duration_days">Duration (days)</label>
+                            <input id="backfill_duration_days" name="backfill_duration_days" type="number" min="1" placeholder="7"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus-border-transparent">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_max_per_day">Max Visits per Day</label>
+                            <input id="backfill_max_per_day" name="backfill_max_per_day" type="number" min="0" placeholder="2000"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_max_total">Max Visits Total</label>
+                            <input id="backfill_max_total" name="backfill_max_total" type="number" min="0" placeholder="200000"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_rps_limit">RPS Limit (optional)</label>
+                            <input id="backfill_rps_limit" name="backfill_rps_limit" type="number" step="0.1" min="0" placeholder="5.0"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_seed">Seed (optional)</label>
+                            <input id="backfill_seed" name="backfill_seed" type="number" placeholder="42"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700" for="backfill_name">Run Name (optional)</label>
+                            <input id="backfill_name" name="backfill_name" type="text" placeholder="backfill-jan"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <input id="backfill_run_once" name="backfill_run_once" type="checkbox" class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary" checked>
+                                Run once and idle (avoid restart loops)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <button id="backfill-run-btn" type="submit" class="px-5 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
+                            Run Backfill
+                        </button>
+                        <button id="backfill-load-last-btn" type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Load last payload
+                        </button>
+                        <p class="text-sm text-gray-500">Backfill runs use the current Matomo URL/site/token from the primary container.</p>
+                    </div>
+
+                    <div id="backfill-result" class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 space-y-1">
+                        <div><span class="font-semibold">Message:</span> <span id="backfill-result-message">—</span></div>
+                        <div><span class="font-semibold">Container:</span> <span id="backfill-result-container">—</span></div>
+                        <div><span class="font-semibold">ID:</span> <span id="backfill-result-id">—</span></div>
+                        <div><span class="font-semibold">Last Run:</span> <span id="backfill-last-timestamp">—</span></div>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-6">
+                        <h3 class="text-sm font-semibold text-gray-800">Backfill Runs</h3>
+                        <button id="backfill-cleanup-btn" type="button" class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Cleanup exited
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto mt-3">
+                        <table id="backfill-runs-table" class="min-w-full border border-gray-200 rounded-lg hidden">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Container</th>
+                                    <th class="px-3 py-2 text-left">ID</th>
+                                    <th class="px-3 py-2 text-left">State</th>
+                                    <th class="px-3 py-2 text-left">Started</th>
+                                    <th class="px-3 py-2 text-left">Finished</th>
+                                    <th class="px-3 py-2 text-left">Exit</th>
+                                    <th class="px-3 py-2 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backfill-runs-body" class="bg-white divide-y divide-gray-100 text-sm"></tbody>
+                        </table>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -1125,6 +1246,7 @@
     <script src="/static/js/urls.js?v=10"></script>
     <script src="/static/js/events.js?v=10"></script>
     <script src="/static/js/funnels.js?v=10"></script>
+    <script src="/static/js/backfill.js?v=10"></script>
     <script src="/static/js/app.js?v=10"></script>
 </body>
 </html>

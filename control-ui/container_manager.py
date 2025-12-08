@@ -17,6 +17,7 @@ class ContainerManager:
         self.docker = docker_client
         self.start_signal_file = os.environ.get("START_SIGNAL_FILE", "/app/data/loadgen.start")
         self.backfill_container_prefix = os.environ.get("BACKFILL_CONTAINER_PREFIX", "matomo-loadgen-backfill")
+        self.backfill_label_key = "backfill-job"
     
     def parse_env_list(self, env_list: list) -> Dict[str, str]:
         """
@@ -149,6 +150,7 @@ class ContainerManager:
                 volumes=volumes,
                 network_mode=network_mode,
                 restart_policy={"Name": "no"},
+                labels={self.backfill_label_key: "true"},
                 detach=True,
             )
 
@@ -160,6 +162,59 @@ class ContainerManager:
             }
         except Exception as e:
             return {"success": False, "error": str(e), "container_name": None, "container_id": None}
+
+    def list_backfill_runs(self) -> list:
+        """List backfill containers by prefix/label."""
+        runs = []
+        try:
+            containers = self.docker.client.containers.list(all=True, filters={"label": f"{self.backfill_label_key}=true"})
+            for c in containers:
+                c.reload()
+                state = c.attrs.get("State", {})
+                runs.append({
+                    "name": c.name,
+                    "id": c.short_id,
+                    "status": c.status,
+                    "started_at": state.get("StartedAt"),
+                    "finished_at": state.get("FinishedAt"),
+                    "exit_code": state.get("ExitCode"),
+                })
+        except Exception as e:
+            print(f"Error listing backfill runs: {e}")
+        return runs
+
+    def cleanup_backfill_runs(self) -> Dict[str, Any]:
+        """Remove stopped backfill containers."""
+        removed = []
+        errors = []
+        try:
+            containers = self.docker.client.containers.list(all=True, filters={"label": f"{self.backfill_label_key}=true"})
+            for c in containers:
+                c.reload()
+                if c.status not in ("exited", "created", "dead"):
+                    continue
+                try:
+                    removed.append(c.name)
+                    c.remove(force=True)
+                except Exception as e:
+                    errors.append(f"{c.name}: {e}")
+        except Exception as e:
+            errors.append(str(e))
+        return {"removed": removed, "errors": errors}
+
+    def cancel_backfill(self, container_name: str) -> Dict[str, Any]:
+        """Stop a running backfill container by name."""
+        try:
+            container = self.docker.client.containers.get(container_name)
+            container.reload()
+            if container.labels.get(self.backfill_label_key) != "true":
+                return {"success": False, "error": "Not a backfill container"}
+            if container.status not in ("running", "paused", "created"):
+                return {"success": False, "error": f"Container is {container.status}, not running"}
+            container.stop(timeout=10)
+            return {"success": True, "error": None}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
     
     def get_status(self) -> Dict[str, Any]:
         """

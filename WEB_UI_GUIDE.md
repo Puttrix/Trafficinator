@@ -179,6 +179,23 @@ The Web UI consists of 5 main tabs:
 ```
 Guardrails: window must end on/before today; start <= end; max 180 days; caps must be consistent (total ≥ per-day); warnings on very high per-day caps and RPS.
 
+### Backfill Tab (One-off runs)
+
+**Purpose:** Run a historical replay as an ephemeral job without changing the main config.
+
+**Features:**
+- Separate form from the main Config tab; calls `/api/backfill/run` to spawn a one-off container.
+- Mode guardrails: absolute (start/end) or relative (days back + duration), not both; frontend enforces no future end and ≤180-day windows.
+- Run controls: caps per day/total, RPS limit, seed, run name, “run once and idle” toggle.
+- History & control: table of backfill runs with cancel for running jobs and cleanup for exited jobs.
+- Last payload/result: loads the most recent backfill payload; “Load last payload” button pre-fills the form.
+
+**Usage:**
+1) Open Backfill tab. Pick absolute or relative window; fill caps/throttle/seed as needed.
+2) Click **Run Backfill** (validation runs client-side; server validates too).
+3) Monitor the runs table; use **Cancel** to stop a running job; use **Cleanup exited** to remove finished jobs.
+4) Use **Load last payload** to quickly rerun or tweak the previous backfill.
+
 **Field Reference:**
 
 | Field | Description | Default | Range |

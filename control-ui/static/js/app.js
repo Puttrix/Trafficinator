@@ -46,6 +46,10 @@ class App {
         this.funnelsManager = new FunnelsManager();
         this.funnelsManager.init();
 
+        // Initialize backfill manager
+        this.backfillManager = new BackfillManager();
+        this.backfillManager.init();
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -104,6 +108,9 @@ class App {
         if (this.currentTab === 'funnels' && this.funnelsManager && this.funnelsManager.onTabDeactivated) {
             this.funnelsManager.onTabDeactivated();
         }
+        if (this.currentTab === 'backfill' && this.backfillManager && this.backfillManager.onTabDeactivated) {
+            this.backfillManager.onTabDeactivated();
+        }
 
         // Start refresh for status tab
         if (tabName === 'status') {
@@ -126,6 +133,9 @@ class App {
             } else {
                 this.funnelsManager.loadFunnels();
             }
+        }
+        if (tabName === 'backfill' && this.backfillManager && this.backfillManager.onTabActivated) {
+            this.backfillManager.onTabActivated();
         }
 
         // Load tab-specific data
@@ -154,6 +164,11 @@ class App {
             case 'funnels':
                 if (this.funnelsManager) {
                     this.funnelsManager.loadFunnels();
+                }
+                break;
+            case 'backfill':
+                if (this.backfillManager) {
+                    this.backfillManager.loadStatus();
                 }
                 break;
         }

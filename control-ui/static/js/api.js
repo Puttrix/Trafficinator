@@ -214,6 +214,33 @@ class API {
             method: 'DELETE'
         });
     }
+
+    // Backfill (one-off)
+    async runBackfill(payload) {
+        return this.request('/api/backfill/run', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    async backfillStatus() {
+        return this.request('/api/backfill/status');
+    }
+
+    async backfillCleanup() {
+        return this.request('/api/backfill/cleanup', { method: 'POST' });
+    }
+
+    async backfillLast() {
+        return this.request('/api/backfill/last');
+    }
+
+    async backfillCancel(containerName) {
+        return this.request('/api/backfill/cancel', {
+            method: 'POST',
+            body: JSON.stringify({ container_name: containerName })
+        });
+    }
 }
 
 // Create global API instance

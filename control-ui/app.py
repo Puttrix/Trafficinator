@@ -32,6 +32,10 @@ from models import (
     ApplyConfigResponse,
     BackfillRunRequest,
     BackfillRunResponse,
+    BackfillStatusResponse,
+    BackfillCleanupResponse,
+    BackfillLastResponse,
+    BackfillCancelResponse,
     URLContentRequest,
     PresetListResponse,
     PresetDetail,
@@ -63,6 +67,7 @@ docker_client = DockerClient()
 container_manager = ContainerManager(docker_client)
 config_database = Database(os.getenv("CONFIG_DB_PATH"))
 FUNNEL_CONFIG_PATH = Path(os.getenv("FUNNEL_CONFIG_PATH", "/app/data/funnels.json"))
+BACKFILL_HISTORY_PATH = Path(os.getenv("BACKFILL_HISTORY_PATH", "/app/data/backfill_history.json"))
 
 
 @asynccontextmanager
@@ -272,6 +277,17 @@ async def run_backfill(
 
     result = container_manager.spawn_backfill_job(env_vars=env, name=backfill_request.name)
     if result.get("success"):
+        # Persist last run payload/result for UI reference
+        try:
+            BACKFILL_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+            history = {
+                "payload": env,
+                "result": result,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }
+            BACKFILL_HISTORY_PATH.write_text(json.dumps(history, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to write backfill history: {e}")
         return BackfillRunResponse(
             success=True,
             message="Backfill job started",
@@ -283,6 +299,79 @@ async def run_backfill(
         message="Failed to start backfill job",
         error=result.get("error"),
     )
+
+
+@app.get("/api/backfill/status", response_model=BackfillStatusResponse)
+@limiter.limit("30/minute")
+async def backfill_status(request: Request, authenticated: bool = Depends(verify_api_key)):
+    """Return list of backfill runs (ephemeral containers)."""
+    if not docker_client.is_connected():
+        raise HTTPException(status_code=503, detail="Docker daemon not connected")
+
+    runs = container_manager.list_backfill_runs()
+    formatted = []
+    for r in runs:
+        formatted.append({
+            "container_name": r.get("name"),
+            "container_id": r.get("id"),
+            "state": r.get("status"),
+            "started_at": r.get("started_at"),
+            "finished_at": r.get("finished_at"),
+            "exit_code": r.get("exit_code"),
+            "error": None,
+        })
+
+    return BackfillStatusResponse(success=True, message="ok", runs=formatted)
+
+
+@app.post("/api/backfill/cleanup", response_model=BackfillCleanupResponse)
+@limiter.limit("10/minute")
+async def backfill_cleanup(request: Request, authenticated: bool = Depends(verify_api_key)):
+    """Remove exited backfill containers."""
+    if not docker_client.is_connected():
+        raise HTTPException(status_code=503, detail="Docker daemon not connected")
+
+    result = container_manager.cleanup_backfill_runs()
+    success = len(result.get("errors", [])) == 0
+    message = "Cleanup complete" if success else "Cleanup completed with errors"
+    return BackfillCleanupResponse(
+        success=success,
+        message=message,
+        removed=result.get("removed", []),
+        errors=result.get("errors", []),
+    )
+
+
+@app.get("/api/backfill/last", response_model=BackfillLastResponse)
+@limiter.limit("30/minute")
+async def backfill_last(request: Request, authenticated: bool = Depends(verify_api_key)):
+    """Return last backfill payload/result if available."""
+    if not BACKFILL_HISTORY_PATH.exists():
+        return BackfillLastResponse(success=True, message="No backfill history", payload=None, result=None, timestamp=None)
+    try:
+        data = json.loads(BACKFILL_HISTORY_PATH.read_text(encoding="utf-8"))
+        return BackfillLastResponse(
+            success=True,
+            message="ok",
+            payload=data.get("payload"),
+            result=data.get("result"),
+            timestamp=data.get("timestamp"),
+        )
+    except Exception as e:
+        return BackfillLastResponse(success=False, message="Failed to read backfill history", payload=None, result=None, timestamp=None)
+
+
+@app.post("/api/backfill/cancel", response_model=BackfillCancelResponse)
+@limiter.limit("10/minute")
+async def backfill_cancel(container_name: str = Body(..., embed=True), authenticated: bool = Depends(verify_api_key)):
+    """Stop a running backfill container."""
+    if not docker_client.is_connected():
+        raise HTTPException(status_code=503, detail="Docker daemon not connected")
+
+    result = container_manager.cancel_backfill(container_name)
+    if result.get("success"):
+        return BackfillCancelResponse(success=True, message="Backfill container stopped")
+    return BackfillCancelResponse(success=False, message="Failed to stop backfill container", error=result.get("error"))
 
 
 @app.post("/api/start", response_model=StartResponse)

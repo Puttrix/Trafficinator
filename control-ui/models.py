@@ -142,6 +142,43 @@ class BackfillRunResponse(BaseModel):
     error: Optional[str] = None
 
 
+class BackfillStatusItem(BaseModel):
+    container_name: str
+    container_id: str
+    state: str
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    exit_code: Optional[int] = None
+    error: Optional[str] = None
+
+
+class BackfillStatusResponse(BaseModel):
+    success: bool
+    message: str
+    runs: list[BackfillStatusItem]
+
+
+class BackfillCleanupResponse(BaseModel):
+    success: bool
+    message: str
+    removed: list[str] = []
+    errors: list[str] = []
+
+
+class BackfillLastResponse(BaseModel):
+    success: bool
+    message: str
+    payload: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    timestamp: Optional[str] = None
+
+
+class BackfillCancelResponse(BaseModel):
+    success: bool
+    message: str
+    error: Optional[str] = None
+
+
 class URLContentRequest(BaseModel):
     """Request for URL validation/upload"""
     content: str = Field(..., description="URL file content (one URL per line)")
