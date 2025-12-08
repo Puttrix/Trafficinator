@@ -247,3 +247,8 @@
 - args: Added test_format_cdt_converts_to_utc() to verify CET→UTC conversion.
 - result: Test confirms 14:30 CET → 13:30 UTC and midnight CET → 23:00 previous day UTC.
 - artifacts: matomo-load-baked/tests/test_backfill.py
+
+- tool: apply_patch (.assistant/status.md)
+- args: Refreshed status.md from backlog/task_log with current date, focus on merging PR #11/tagging v0.3.0, and noted multi-target/realism next steps.
+- result: Status reflects current focus and pending actions; artifacts unchanged.
+- artifacts: .assistant/status.md
