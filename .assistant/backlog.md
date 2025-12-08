@@ -312,6 +312,16 @@
       - Testing: schema/API round-trips, loader caps/seed/TZ boundary cases, integration smoke for backfill start/summary, UI validation and preset save/load. ✅ (new pytest for window/caps; integration/manual)
       - Docs: WEB_UI_GUIDE backfill section, presets/README env updates, assistant guides/status refresh if needed. ✅
 
+- [ ] **P-033** Separate backfill from normal config (one-off runs)
+      tags: feature, backfill, UX  priority: medium  est: 3h
+      deps: P-032
+      accepts:
+      - Backfill settings isolated from day-to-day config (e.g., dedicated tab/section and API model)
+      - Clear lifecycle: prepare backfill → run once → auto-disable/reset after completion
+      - UI/UX guards to prevent accidental replays (explicit enable/confirm, status indicator)
+      - API supports backfill runs without persisting them as active defaults
+      - Docs updated with backfill workflow and cleanup/reset steps
+
 ## Infrastructure
 - [ ] **P-011** Kubernetes manifests for k8s deployments
       tags: infra, k8s  priority: low  est: 4h
