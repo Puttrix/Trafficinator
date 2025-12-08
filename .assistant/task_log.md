@@ -272,3 +272,13 @@
 - args: none
 - result: Tests passed (20 passed).
 - artifacts: none
+
+- tool: apply_patch (control-ui/app.py; control-ui/container_manager.py; control-ui/models.py; matomo-load-baked/loader.py)
+- args: Added one-off backfill support: `/api/backfill/run` launches an ephemeral backfill container using current env, validates input, and sets `BACKFILL_RUN_ONCE`; loader now idles after a one-shot run to avoid restart loops.
+- result: Backfill can be triggered as a separate flow without mutating the main container config; loader respects `BACKFILL_RUN_ONCE`.
+- artifacts: none
+
+- tool: shell (python3 -m pytest matomo-load-baked/tests/test_backfill.py)
+- args: none
+- result: Tests passed (5 passed).
+- artifacts: none

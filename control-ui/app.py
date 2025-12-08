@@ -30,6 +30,8 @@ from models import (
     RestartResponse,
     LogsResponse,
     ApplyConfigResponse,
+    BackfillRunRequest,
+    BackfillRunResponse,
     URLContentRequest,
     PresetListResponse,
     PresetDetail,
@@ -222,6 +224,65 @@ async def get_status(request: Request, authenticated: bool = Depends(verify_api_
             status_code=500,
             detail=f"Error getting status: {str(e)}"
         )
+
+
+@app.post("/api/backfill/run", response_model=BackfillRunResponse)
+@limiter.limit("10/minute")
+async def run_backfill(
+    request: Request,
+    backfill_request: BackfillRunRequest,
+    authenticated: bool = Depends(verify_api_key),
+):
+    """
+    Launch a one-off backfill run in an ephemeral container without mutating the main loadgen config.
+    """
+    if not docker_client.is_connected():
+        raise HTTPException(status_code=503, detail="Docker daemon not connected")
+
+    current_env = container_manager.get_current_env()
+    if current_env is None:
+        return BackfillRunResponse(success=False, message="Primary container not found", error="container_not_found")
+
+    env = current_env.copy()
+    env.update({
+        "BACKFILL_ENABLED": "true",
+        "BACKFILL_RUN_ONCE": "true" if backfill_request.BACKFILL_RUN_ONCE else "false",
+        "AUTO_START": "true",
+    })
+
+    for field in [
+        "BACKFILL_START_DATE",
+        "BACKFILL_END_DATE",
+        "BACKFILL_DAYS_BACK",
+        "BACKFILL_DURATION_DAYS",
+        "BACKFILL_MAX_VISITS_PER_DAY",
+        "BACKFILL_MAX_VISITS_TOTAL",
+        "BACKFILL_RPS_LIMIT",
+        "BACKFILL_SEED",
+    ]:
+        value = getattr(backfill_request, field)
+        if value is not None:
+            env[field] = str(value)
+
+    validator = ConfigValidator()
+    try:
+        validator.validate_config(env)
+    except Exception as e:
+        return BackfillRunResponse(success=False, message="Validation failed", error=str(e))
+
+    result = container_manager.spawn_backfill_job(env_vars=env, name=backfill_request.name)
+    if result.get("success"):
+        return BackfillRunResponse(
+            success=True,
+            message="Backfill job started",
+            container_name=result.get("container_name"),
+            container_id=result.get("container_id"),
+        )
+    return BackfillRunResponse(
+        success=False,
+        message="Failed to start backfill job",
+        error=result.get("error"),
+    )
 
 
 @app.post("/api/start", response_model=StartResponse)

@@ -4,6 +4,7 @@ Container management operations
 Provides high-level operations for managing the load generator container.
 """
 import os
+import time
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from docker_client import DockerClient
@@ -15,6 +16,7 @@ class ContainerManager:
     def __init__(self, docker_client: DockerClient):
         self.docker = docker_client
         self.start_signal_file = os.environ.get("START_SIGNAL_FILE", "/app/data/loadgen.start")
+        self.backfill_container_prefix = os.environ.get("BACKFILL_CONTAINER_PREFIX", "matomo-loadgen-backfill")
     
     def parse_env_list(self, env_list: list) -> Dict[str, str]:
         """
@@ -52,6 +54,14 @@ class ContainerManager:
                     masked[key] = '***MASKED***'
         
         return masked
+
+    def get_current_env(self) -> Optional[Dict[str, str]]:
+        """Return current container env as a dict."""
+        info = self.docker.get_container_info()
+        if not info:
+            return None
+        env_list = info.get("config", {}).get("env", [])
+        return self.parse_env_list(env_list)
     
     def calculate_uptime(self, started_at: Optional[str]) -> Optional[str]:
         """
@@ -103,6 +113,53 @@ class ContainerManager:
         except Exception as e:
             print(f"Error writing start signal: {e}")
             return False
+
+    def spawn_backfill_job(self, env_vars: Dict[str, str], name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Launch a one-off backfill container using the current container as a template.
+        Does not mutate the primary matomo-loadgen container.
+        """
+        try:
+            container = self.docker.get_container()
+            if not container:
+                return {"success": False, "error": "Primary container not found", "container_name": None, "container_id": None}
+
+            # Extract template info
+            attrs = container.attrs
+            config = attrs.get("Config", {})
+            host_config = attrs.get("HostConfig", {})
+            image = config.get("Image")
+            volumes = host_config.get("Binds", [])
+            network_mode = host_config.get("NetworkMode", "bridge")
+
+            # Prepare env (disable restart loops and force backfill run)
+            env = self.parse_env_list(config.get("Env", []))
+            env.update(env_vars)
+            env.setdefault("BACKFILL_ENABLED", "true")
+            env.setdefault("BACKFILL_RUN_ONCE", "true")
+            env.setdefault("AUTO_START", "true")
+
+            env_list = [f"{k}={v}" for k, v in env.items()]
+
+            job_name = name or f"{self.backfill_container_prefix}-{int(time.time())}"
+            new_container = self.docker.client.containers.run(
+                image=image,
+                name=job_name,
+                environment=env_list,
+                volumes=volumes,
+                network_mode=network_mode,
+                restart_policy={"Name": "no"},
+                detach=True,
+            )
+
+            return {
+                "success": True,
+                "error": None,
+                "container_name": new_container.name,
+                "container_id": new_container.short_id,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "container_name": None, "container_id": None}
     
     def get_status(self) -> Dict[str, Any]:
         """

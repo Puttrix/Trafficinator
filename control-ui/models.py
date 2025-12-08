@@ -119,6 +119,29 @@ class ApplyConfigResponse(BaseModel):
     error: Optional[str] = None
 
 
+class BackfillRunRequest(BaseModel):
+    """Request body for one-off backfill runs"""
+    BACKFILL_START_DATE: Optional[str] = None
+    BACKFILL_END_DATE: Optional[str] = None
+    BACKFILL_DAYS_BACK: Optional[str] = None
+    BACKFILL_DURATION_DAYS: Optional[str] = None
+    BACKFILL_MAX_VISITS_PER_DAY: Optional[int] = None
+    BACKFILL_MAX_VISITS_TOTAL: Optional[int] = None
+    BACKFILL_RPS_LIMIT: Optional[float] = None
+    BACKFILL_SEED: Optional[int] = None
+    BACKFILL_RUN_ONCE: bool = Field(default=True, description="Idle after run to avoid restart loops")
+    name: Optional[str] = Field(default=None, description="Optional name for the ephemeral backfill container")
+
+
+class BackfillRunResponse(BaseModel):
+    """Response for POST /api/backfill/run"""
+    success: bool
+    message: str
+    container_name: Optional[str] = None
+    container_id: Optional[str] = None
+    error: Optional[str] = None
+
+
 class URLContentRequest(BaseModel):
     """Request for URL validation/upload"""
     content: str = Field(..., description="URL file content (one URL per line)")
