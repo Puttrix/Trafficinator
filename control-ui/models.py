@@ -50,6 +50,15 @@ class ConfigEnvironment(BaseModel):
     ECOMMERCE_ORDER_VALUE_MAX: Optional[str] = None
     ECOMMERCE_CURRENCY: Optional[str] = None
     TIMEZONE: Optional[str] = None
+    BACKFILL_ENABLED: Optional[str] = None
+    BACKFILL_START_DATE: Optional[str] = None
+    BACKFILL_END_DATE: Optional[str] = None
+    BACKFILL_DAYS_BACK: Optional[str] = None
+    BACKFILL_DURATION_DAYS: Optional[str] = None
+    BACKFILL_MAX_VISITS_PER_DAY: Optional[str] = None
+    BACKFILL_MAX_VISITS_TOTAL: Optional[str] = None
+    BACKFILL_RPS_LIMIT: Optional[str] = None
+    BACKFILL_SEED: Optional[str] = None
 
     model_config = ConfigDict(extra='allow')
 

@@ -217,6 +217,21 @@
                 </div>
             </div>
 
+            <!-- Backfill Status -->
+            <div class="bg-white rounded-lg shadow mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Backfill Status</h3>
+                            <p class="text-sm text-gray-500 mt-1">Historical replay configuration at a glance</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="backfill-status" class="p-6 space-y-2 text-sm text-gray-600">
+                    <p class="text-sm text-gray-500">No backfill configuration detected.</p>
+                </div>
+            </div>
+
             <!-- Saved Presets Summary -->
             <div class="bg-white rounded-lg shadow mt-6">
                 <div class="p-6 border-b border-gray-200">
@@ -406,6 +421,94 @@
                                 <input type="number" name="max_total_visits" id="max_total_visits" min="0" max="10000000" value="0"
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <p class="text-xs text-gray-500 mt-1">0 = disabled, max 10,000,000</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backfill (Historical Replay) -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Backfill (Historical Replay)</h3>
+                        <p class="text-sm text-gray-600 -mt-4">Replay historical visits over a bounded window. Provide either absolute dates or a relative window.</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label class="inline-flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                                    <input type="checkbox" name="backfill_enabled" id="backfill_enabled" class="h-4 w-4 text-primary border-gray-300 rounded">
+                                    <span>Enable Backfill</span>
+                                </label>
+                                <p class="text-xs text-gray-500">When enabled, visits are replayed across the selected date window instead of realtime.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="backfill_max_visits_per_day" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Max Visits per Day
+                                </label>
+                                <input type="number" name="backfill_max_visits_per_day" id="backfill_max_visits_per_day" min="1" max="10000" value="2000"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Per-day cap (default 2,000; max 10,000)</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="backfill_max_visits_total" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Max Visits Total
+                                </label>
+                                <input type="number" name="backfill_max_visits_total" id="backfill_max_visits_total" min="0" max="10000000" value="200000"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Global cap; 0 to disable</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Absolute Date Window</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <input type="date" name="backfill_start_date" id="backfill_start_date"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <p class="text-xs text-gray-500 mt-1">Start date (YYYY-MM-DD)</p>
+                                    </div>
+                                    <div>
+                                        <input type="date" name="backfill_end_date" id="backfill_end_date"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <p class="text-xs text-gray-500 mt-1">End date (cannot be in future)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Relative Window</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <input type="number" name="backfill_days_back" id="backfill_days_back" min="1" max="365" placeholder="30"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <p class="text-xs text-gray-500 mt-1">Days back (1=yesterday)</p>
+                                    </div>
+                                    <div>
+                                        <input type="number" name="backfill_duration_days" id="backfill_duration_days" min="1" max="180" placeholder="30"
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <p class="text-xs text-gray-500 mt-1">Duration in days</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">Use either absolute dates OR relative window, not both.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label for="backfill_rps_limit" class="block text-sm font-medium text-gray-700 mb-2">
+                                    RPS Limit (optional)
+                                </label>
+                                <input type="number" step="0.1" name="backfill_rps_limit" id="backfill_rps_limit" min="0.1" max="500"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="e.g., 25">
+                                <p class="text-xs text-gray-500 mt-1">Throttle requests/sec during backfill (optional)</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="backfill_seed" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Deterministic Seed (optional)
+                                </label>
+                                <input type="number" name="backfill_seed" id="backfill_seed" min="0" max="2147483647"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="e.g., 42">
+                                <p class="text-xs text-gray-500 mt-1">Stable runs (per-day offset applied)</p>
                             </div>
                         </div>
                     </div>
