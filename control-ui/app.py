@@ -363,7 +363,11 @@ async def backfill_last(request: Request, authenticated: bool = Depends(verify_a
 
 @app.post("/api/backfill/cancel", response_model=BackfillCancelResponse)
 @limiter.limit("10/minute")
-async def backfill_cancel(container_name: str = Body(..., embed=True), authenticated: bool = Depends(verify_api_key)):
+async def backfill_cancel(
+    request: Request,
+    container_name: str = Body(..., embed=True),
+    authenticated: bool = Depends(verify_api_key),
+):
     """Stop a running backfill container."""
     if not docker_client.is_connected():
         raise HTTPException(status_code=503, detail="Docker daemon not connected")
