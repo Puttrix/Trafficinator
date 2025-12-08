@@ -262,3 +262,13 @@
 - args: Updated status to reflect PR #11 merged into main, v0.3.0 tag pending, and added test verification note.
 - result: Status now mirrors post-merge state and highlights remaining release/tag tasks.
 - artifacts: .assistant/status.md
+
+- tool: apply_patch (matomo-load-baked/loader.py; control-ui/container_manager.py; docker-compose.webui.yml; docker-compose.yml; docker-compose.prod.yml; docker-compose.test.yml; WEB_UI_GUIDE.md; matomo-load-baked/tests/test_autostart.py)
+- args: Added AUTO_START gating with start-signal file support, Control UI start/restart now writes the signal, docker-compose.webui defaults to AUTO_START=false, other compose files allow override, and documentation mentions idle-by-default behavior; added tests for the start gate.
+- result: Load generator no longer autostarts in webui deployments; start/restart triggers a start signal; loader waits for signal when AUTO_START=false; tests added.
+- artifacts: WEB_UI_GUIDE.md, matomo-load-baked/tests/test_autostart.py
+
+- tool: shell (python3 -m pytest matomo-load-baked/tests)
+- args: none
+- result: Tests passed (20 passed).
+- artifacts: none

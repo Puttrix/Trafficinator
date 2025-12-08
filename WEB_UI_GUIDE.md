@@ -52,6 +52,8 @@ The Trafficinator Web UI provides a modern, browser-based interface for controll
    docker-compose -f docker-compose.webui.yml up -d
    ```
 
+   > The load generator now defaults to `AUTO_START=false` in `docker-compose.webui.yml`. It will stay idle until you click **Start** in the UI (or trigger the start API), preventing accidental traffic with default settings.
+
 2. **Access the UI:**
    Open your browser to: [http://localhost:8000/ui](http://localhost:8000/ui)
 

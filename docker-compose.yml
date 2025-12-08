@@ -8,6 +8,9 @@ services:
     environment:
       MATOMO_URL: "https://matomo.surputte.se/matomo.php"
       MATOMO_SITE_ID: "1"
+      AUTO_START: "${AUTO_START:-true}"
+      START_SIGNAL_FILE: "${START_SIGNAL_FILE:-/app/data/loadgen.start}"
+      START_CHECK_INTERVAL: "${START_CHECK_INTERVAL:-2.0}"
       URLS_FILE: /config/urls.txt
       TARGET_VISITS_PER_DAY: "20000"
       PAGEVIEWS_MIN: "3"
@@ -36,4 +39,3 @@ services:
     # Config files are now embedded in the Docker image during build
     # volumes:
     #   - ./config:/config
-

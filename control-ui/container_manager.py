@@ -3,6 +3,7 @@ Container management operations
 
 Provides high-level operations for managing the load generator container.
 """
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from docker_client import DockerClient
@@ -13,6 +14,7 @@ class ContainerManager:
     
     def __init__(self, docker_client: DockerClient):
         self.docker = docker_client
+        self.start_signal_file = os.environ.get("START_SIGNAL_FILE", "/app/data/loadgen.start")
     
     def parse_env_list(self, env_list: list) -> Dict[str, str]:
         """
@@ -87,6 +89,20 @@ class ContainerManager:
         except Exception as e:
             print(f"Error calculating uptime: {e}")
             return None
+
+    def send_start_signal(self) -> bool:
+        """
+        Touch the start signal file used to allow the load generator to begin when AUTO_START is disabled.
+        Returns True if the signal was written successfully.
+        """
+        try:
+            os.makedirs(os.path.dirname(self.start_signal_file), exist_ok=True)
+            with open(self.start_signal_file, "w", encoding="utf-8") as fh:
+                fh.write(datetime.utcnow().isoformat())
+            return True
+        except Exception as e:
+            print(f"Error writing start signal: {e}")
+            return False
     
     def get_status(self) -> Dict[str, Any]:
         """
@@ -161,9 +177,14 @@ class ContainerManager:
                 "error": "Config updates not yet implemented. Use docker-compose to change config.",
                 "state": self.docker.get_container_state(),
             }
-        
+
+        signal_written = self.send_start_signal()
         result = self.docker.start_container()
         result["state"] = self.docker.get_container_state()
+        if result.get("success") and signal_written:
+            # Encourage loader with AUTO_START=false to begin
+            message = result.get("message", "Container started successfully")
+            result["message"] = f"{message}; start signal sent"
         return result
     
     def stop_container(self, timeout: int = 10) -> Dict[str, Any]:
@@ -190,8 +211,12 @@ class ContainerManager:
         Returns:
             Result dict with success status
         """
+        signal_written = self.send_start_signal()
         result = self.docker.restart_container(timeout=timeout)
         result["state"] = self.docker.get_container_state()
+        if result.get("success") and signal_written:
+            message = result.get("message", "Container restarted successfully")
+            result["message"] = f"{message}; start signal sent"
         return result
     
     def get_logs(self, lines: int = 100, filter_text: Optional[str] = None) -> Dict[str, Any]:

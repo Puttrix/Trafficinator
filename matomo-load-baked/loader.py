@@ -83,6 +83,16 @@ BACKFILL_RPS_LIMIT = float(BACKFILL_RPS_LIMIT) if BACKFILL_RPS_LIMIT else None
 BACKFILL_SEED = os.environ.get("BACKFILL_SEED")
 BACKFILL_SEED = int(BACKFILL_SEED) if BACKFILL_SEED is not None else None
 
+# Startup control
+def _parse_bool(value: Optional[str], default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.lower() in ("1", "true", "yes", "on", "y")
+
+AUTO_START = _parse_bool(os.environ.get("AUTO_START"), default=True)
+START_SIGNAL_FILE = os.environ.get("START_SIGNAL_FILE", "/app/data/loadgen.start")
+START_CHECK_INTERVAL = float(os.environ.get("START_CHECK_INTERVAL", "2.0"))
+
 USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
@@ -1399,7 +1409,24 @@ async def run_backfill(session, urls):
     logging.info("[backfill] Complete: %s", summary)
     return summary
 
+async def wait_for_start_signal():
+    """Block startup when AUTO_START is disabled until a start signal file appears."""
+    if AUTO_START:
+        return
+
+    logging.info("[startup] AUTO_START disabled; waiting for start signal file at %s", START_SIGNAL_FILE)
+    while True:
+        if os.path.exists(START_SIGNAL_FILE):
+            try:
+                os.remove(START_SIGNAL_FILE)
+            except OSError:
+                pass
+            logging.info("[startup] Start signal detected; beginning load generation.")
+            return
+        await asyncio.sleep(START_CHECK_INTERVAL)
+
 async def main():
+    await wait_for_start_signal()
     urls_file = resolve_urls_file()
     urls = read_urls(urls_file)
 

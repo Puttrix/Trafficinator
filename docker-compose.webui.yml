@@ -9,6 +9,9 @@ services:
       MATOMO_URL: "${MATOMO_URL:-https://matomo.example.com/matomo.php}"
       MATOMO_SITE_ID: "${MATOMO_SITE_ID:-1}"
       MATOMO_TOKEN_AUTH: "${MATOMO_TOKEN_AUTH:-}"
+      AUTO_START: "${AUTO_START:-false}"
+      START_SIGNAL_FILE: "${START_SIGNAL_FILE:-/app/data/loadgen.start}"
+      START_CHECK_INTERVAL: "${START_CHECK_INTERVAL:-2.0}"
       TARGET_VISITS_PER_DAY: "${TARGET_VISITS_PER_DAY:-20000}"
       PAGEVIEWS_MIN: "${PAGEVIEWS_MIN:-3}"
       PAGEVIEWS_MAX: "${PAGEVIEWS_MAX:-6}"
@@ -51,6 +54,7 @@ services:
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
       CONTROL_UI_API_KEY: "${CONTROL_UI_API_KEY:-change-me-in-production}"
       DOCKER_HOST: "unix:///var/run/docker.sock"
+      START_SIGNAL_FILE: "${START_SIGNAL_FILE:-/app/data/loadgen.start}"
     volumes:
       # Mount Docker socket to control containers
       - /var/run/docker.sock:/var/run/docker.sock

@@ -7,6 +7,9 @@ services:
       MATOMO_URL: "https://matomo.surputte.se/matomo.php"
       MATOMO_SITE_ID: "1"
       MATOMO_TOKEN_AUTH: "your_api_token_here"  # Replace with your actual Matomo API token
+      AUTO_START: "${AUTO_START:-true}"
+      START_SIGNAL_FILE: "${START_SIGNAL_FILE:-/app/data/loadgen.start}"
+      START_CHECK_INTERVAL: "${START_CHECK_INTERVAL:-2.0}"
       URLS_FILE: /config/urls.txt
       TARGET_VISITS_PER_DAY: "20000"
       PAGEVIEWS_MIN: "3"
