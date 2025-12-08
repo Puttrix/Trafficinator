@@ -1,16 +1,16 @@
 # Status
 
-**Last Updated:** 2025-12-08 (P-032 release pending merge/tag)
+**Last Updated:** 2025-12-08 (P-032 merged to main; tag pending)
 
 ---
 
 ## Focus
-- Finalize P-032 backfill release (merge PR #11 from `develop→main`, tag v0.3.0) and prepare multi-target design (P-008) plus richer journeys (P-006).
+- Finalize P-032 backfill release (tag v0.3.0, release notes) and prepare multi-target design (P-008) plus richer journeys (P-006).
 
 ---
 
 ## Now / Next / Later
-- **Now:** Merge PR #11 and cut v0.3.0 tag; ensure backfill docs/UI/tests stay in sync.
+- **Now:** Tag v0.3.0 on main and note release highlights for P-032.
 - **Next:** Shape P-008 multi-target config/API/loader design and coordinate with P-006 journey realism.
 - **Later:** P-026 enhancements (websocket logs, graphs, dark mode) and observability/extensibility (P-009/P-010).
 
@@ -37,14 +37,15 @@
 
 ## Recent Progress
 - **P-032 Bug Fix:** Added `format_cdt()` to send Matomo `cdt` in UTC; tests confirm CET→UTC conversion.
-- **P-032 Complete:** End-to-end backfill (validation, UI, loader caps/seed/RPS, docs, pytest coverage).
-- `develop` ahead of `main` by ~6 commits covering backfill + UTC fix; PR #11 open.
+- **P-032 Complete:** End-to-end backfill (validation, UI, loader caps/seed/RPS, docs, pytest coverage); merged `develop`→`main` via PR #11.
+- Verified `matomo-load-baked/tests/test_backfill.py` (5 passed).
 
 ---
 
 ## Pending Actions
 - [x] Create PR `develop→main` for P-032 release — **PR #11**: https://github.com/Puttrix/Trafficinator/pull/11
-- [ ] Merge PR #11 and tag v0.3.0
+- [x] Merge PR #11 to main
+- [ ] Tag v0.3.0 and update release notes
 - [ ] Update backlog for next focus (P-008/P-006)
 
 ---

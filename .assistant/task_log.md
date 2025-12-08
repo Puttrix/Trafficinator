@@ -252,3 +252,13 @@
 - args: Refreshed status.md from backlog/task_log with current date, focus on merging PR #11/tagging v0.3.0, and noted multi-target/realism next steps.
 - result: Status reflects current focus and pending actions; artifacts unchanged.
 - artifacts: .assistant/status.md
+
+- tool: shell (python3 -m pytest matomo-load-baked/tests/test_backfill.py)
+- args: none
+- result: Tests passed (5 passed in 0.20s).
+- artifacts: none
+
+- tool: apply_patch (.assistant/status.md)
+- args: Updated status to reflect PR #11 merged into main, v0.3.0 tag pending, and added test verification note.
+- result: Status now mirrors post-merge state and highlights remaining release/tag tasks.
+- artifacts: .assistant/status.md
