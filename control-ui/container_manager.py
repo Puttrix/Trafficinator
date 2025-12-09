@@ -203,7 +203,7 @@ class ContainerManager:
         return {"removed": removed, "errors": errors}
 
     def cancel_backfill(self, container_name: str) -> Dict[str, Any]:
-        """Stop a running backfill container by name."""
+        """Stop and remove a backfill container by name."""
         try:
             container = self.docker.client.containers.get(container_name)
             container.reload()
@@ -212,6 +212,8 @@ class ContainerManager:
             if container.status not in ("running", "paused", "created"):
                 return {"success": False, "error": f"Container is {container.status}, not running"}
             container.stop(timeout=10)
+            # Remove after stop to prevent any restart attempts by external agents
+            container.remove(force=True)
             return {"success": True, "error": None}
         except Exception as e:
             return {"success": False, "error": str(e)}
