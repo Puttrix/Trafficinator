@@ -455,6 +455,10 @@ class ContainerManager:
             # Merge new env vars with existing ones (prioritize new)
             existing_env = {e.split('=', 1)[0]: e.split('=', 1)[1] for e in config.get('Env', []) if '=' in e}
             existing_env.update(env_vars)
+            # Ensure start signal path follows container env if present
+            if "START_SIGNAL_FILE" in existing_env:
+                self.start_signal_file = existing_env["START_SIGNAL_FILE"]
+
             new_env = [f"{k}={v}" for k, v in existing_env.items()]
             
             # Store container settings
@@ -463,6 +467,8 @@ class ContainerManager:
             volumes = host_config.get('Binds', [])
             network_mode = host_config.get('NetworkMode', 'bridge')
             restart_policy = host_config.get('RestartPolicy', {})
+            log_config = host_config.get('LogConfig', {})
+            labels = config.get('Labels', {})
             
             # Stop and remove the old container
             was_running = current_state == "running"
@@ -480,6 +486,8 @@ class ContainerManager:
                 volumes=volumes,
                 network_mode=network_mode,
                 restart_policy=restart_policy,
+                log_config=log_config,
+                labels=labels,
                 detach=True
             )
             
