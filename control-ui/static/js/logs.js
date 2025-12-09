@@ -106,12 +106,19 @@ class LogViewer {
 
             const result = await api.getLogs(this.currentLines);
             
-            if (result.logs && Array.isArray(result.logs)) {
-                this.logs = result.logs;
+            if (result.logs) {
+                if (Array.isArray(result.logs)) {
+                    this.logs = result.logs;
+                } else if (typeof result.logs === 'string') {
+                    this.logs = result.logs.length ? result.logs.split('\n') : [];
+                } else {
+                    this.logs = [];
+                }
                 this.filterLogs();
                 
-                // Update stats
-                this.updateStats(result.logs.length, result.container_status);
+                // Update stats (backend returns container_state)
+                const state = result.container_state || result.container_status || 'unknown';
+                this.updateStats(this.logs.length, state);
             } else {
                 this.logs = [];
                 this.filteredLogs = [];
