@@ -139,6 +139,7 @@ class ContainerManager:
             env.setdefault("BACKFILL_ENABLED", "true")
             env.setdefault("BACKFILL_RUN_ONCE", "true")
             env.setdefault("AUTO_START", "true")
+            env.setdefault("LOG_LEVEL", "INFO")
 
             env_list = [f"{k}={v}" for k, v in env.items()]
 

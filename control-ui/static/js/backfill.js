@@ -111,10 +111,19 @@ class BackfillManager {
         if (duration !== null) payload.BACKFILL_DURATION_DAYS = duration;
         if (maxPerDay !== null) payload.BACKFILL_MAX_VISITS_PER_DAY = maxPerDay;
         if (maxTotal !== null) payload.BACKFILL_MAX_VISITS_TOTAL = maxTotal;
-        if (rps !== null) payload.BACKFILL_RPS_LIMIT = rps;
+        if (rps !== null && rps > 0) payload.BACKFILL_RPS_LIMIT = rps;
         if (seed !== null) payload.BACKFILL_SEED = seed;
         if (name) payload.name = name;
         payload.BACKFILL_RUN_ONCE = runOnce;
+
+        // If absolute dates are provided, drop relative fields; if relative provided, drop absolute
+        const hasAbsolute = payload.BACKFILL_START_DATE || payload.BACKFILL_END_DATE;
+        const hasRelative = payload.BACKFILL_DAYS_BACK !== undefined || payload.BACKFILL_DURATION_DAYS !== undefined;
+        if (hasAbsolute && hasRelative) {
+            // Prefer absolute if both were filled in
+            delete payload.BACKFILL_DAYS_BACK;
+            delete payload.BACKFILL_DURATION_DAYS;
+        }
 
         return payload;
     }
