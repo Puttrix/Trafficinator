@@ -349,12 +349,26 @@ class ConfigForm {
         const value = input.value;
         let error = null;
         
-        // Required fields
-        if (input.hasAttribute('required') && (!value || value.trim() === '')) {
-            error = 'This field is required';
+        // Required fields (skip if backfill disabled)
+        const isBackfillInput = name.startsWith('backfill_');
+        const backfillEnabled = this.form.querySelector('[name="backfill_enabled"]')?.checked;
+
+        if (!(isBackfillInput && !backfillEnabled)) {
+            if (input.hasAttribute('required') && (!value || value.trim() === '')) {
+                error = 'This field is required';
+            }
         }
         
         // Number validation
+        const isBackfillInput = name.startsWith('backfill_');
+        const backfillEnabled = this.form.querySelector('[name="backfill_enabled"]')?.checked;
+
+        // Skip backfill field validation when backfill is disabled
+        if (isBackfillInput && !backfillEnabled) {
+            this.clearFieldError(input);
+            return true;
+        }
+
         if (input.type === 'number' && value) {
             const num = parseFloat(value);
             const min = parseFloat(input.getAttribute('min'));
@@ -487,6 +501,12 @@ class ConfigForm {
             } else {
                 group.classList.add('hidden');
             }
+        }
+
+        // If backfill toggled off, clear backfill field errors
+        if (toggle.name === 'backfill_enabled' && !toggle.checked) {
+            const backfillInputs = this.form.querySelectorAll('[name^="backfill_"]');
+            backfillInputs.forEach(input => this.clearFieldError(input));
         }
     }
 
