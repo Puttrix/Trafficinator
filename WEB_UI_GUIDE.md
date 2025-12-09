@@ -192,6 +192,7 @@ Guardrails: window must end on/before today; start <= end; max 180 days; caps mu
 
 **Usage:**
 1) Open Backfill tab. Pick absolute or relative window; fill caps/throttle/seed as needed.
+   - Matomo credentials: the backfill uses the current loadgen environment (MATOMO_URL/SITE_ID/MATOMO_TOKEN_AUTH) from the main container. Set the token in the Config tab (Matomo Token Auth) before running backfill; the Backfill tab does not ask for it separately.
 2) Click **Run Backfill** (validation runs client-side; server validates too).
 3) Monitor the runs table; use **Cancel** to stop a running job; use **Cleanup exited** to remove finished jobs.
 4) Use **Load last payload** to quickly rerun or tweak the previous backfill.
