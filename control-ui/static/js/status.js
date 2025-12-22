@@ -275,14 +275,20 @@ class StatusDashboard {
         const containerStatus = status.container?.state || status.status || 'unknown';
         
         // Show/hide buttons based on status
-        if (containerStatus === 'running') {
+        if (containerStatus === 'running' || containerStatus === 'paused') {
             startBtn.classList.add('hidden');
             stopBtn.classList.remove('hidden');
             restartBtn.classList.remove('hidden');
-        } else if (containerStatus === 'stopped' || containerStatus === 'exited') {
+            startBtn.disabled = false;
+            stopBtn.disabled = false;
+            restartBtn.disabled = false;
+        } else if (containerStatus === 'stopped' || containerStatus === 'exited' || containerStatus === 'created') {
             startBtn.classList.remove('hidden');
             stopBtn.classList.add('hidden');
             restartBtn.classList.add('hidden');
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            restartBtn.disabled = true;
         } else {
             // Unknown or error state - show all but disable
             startBtn.classList.remove('hidden');

@@ -272,3 +272,38 @@
 - args: none
 - result: Tests passed (20 passed).
 - artifacts: none
+
+- tool: apply_patch (control-ui/app.py; control-ui/container_manager.py; control-ui/models.py; matomo-load-baked/loader.py)
+- args: Added one-off backfill support: `/api/backfill/run` launches an ephemeral backfill container using current env, validates input, and sets `BACKFILL_RUN_ONCE`; loader now idles after a one-shot run to avoid restart loops.
+- result: Backfill can be triggered as a separate flow without mutating the main container config; loader respects `BACKFILL_RUN_ONCE`.
+- artifacts: none
+
+- tool: shell (python3 -m pytest matomo-load-baked/tests/test_backfill.py)
+- args: none
+- result: Tests passed (5 passed).
+- artifacts: none
+
+- tool: apply_patch (control-ui/static/index.html; control-ui/static/js/api.js; control-ui/static/js/app.js; control-ui/static/js/backfill.js)
+- args: Added Backfill tab with one-off backfill form, wired to new `/api/backfill/run` endpoint via API helper and App controller; displays run results (container/id/message).
+- result: Users can trigger one-off backfill runs from the UI without altering primary config.
+- artifacts: control-ui/static/js/backfill.js
+
+- tool: apply_patch (control-ui/app.py; control-ui/container_manager.py; control-ui/models.py; control-ui/static/js/api.js; control-ui/static/js/backfill.js; control-ui/static/index.html)
+- args: Added backfill status/cleanup endpoints and UI: list labeled backfill runs, cleanup exited jobs, render runs table, and enforce frontend date window validation (<=180d, no future end, mode exclusivity).
+- result: Backfill tab now shows run history and supports cleanup; backend lists/cleans backfill containers; client blocks invalid windows before calling the API.
+- artifacts: control-ui/static/js/backfill.js
+
+- tool: apply_patch (control-ui/app.py; control-ui/static/js/api.js; control-ui/static/js/backfill.js; control-ui/static/index.html; control-ui/models.py)
+- args: Persist last backfill payload/result to disk, expose `/api/backfill/last`, and surface last-run info in the Backfill tab alongside status/history.
+- result: UI now loads the most recent backfill record on tab activation; backend saves/serves last run metadata.
+- artifacts: control-ui/static/js/backfill.js
+
+- tool: apply_patch (control-ui/app.py; control-ui/container_manager.py; control-ui/models.py; control-ui/static/js/api.js; control-ui/static/js/backfill.js; control-ui/static/index.html)
+- args: Added backfill cancel endpoint and UI action to stop running backfill containers; runs table now shows cancel buttons for running jobs.
+- result: Users can stop a running backfill from the UI; backend stops labeled backfill containers safely.
+- artifacts: control-ui/static/js/backfill.js
+
+- tool: apply_patch (control-ui/static/index.html; control-ui/static/js/backfill.js)
+- args: Added “Load last payload” button and auto-fill support using the last saved backfill payload from `/api/backfill/last`.
+- result: Users can quickly rerun or tweak the previous backfill configuration without retyping.
+- artifacts: control-ui/static/js/backfill.js

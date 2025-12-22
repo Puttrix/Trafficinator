@@ -119,6 +119,66 @@ class ApplyConfigResponse(BaseModel):
     error: Optional[str] = None
 
 
+class BackfillRunRequest(BaseModel):
+    """Request body for one-off backfill runs"""
+    BACKFILL_START_DATE: Optional[str] = None
+    BACKFILL_END_DATE: Optional[str] = None
+    BACKFILL_DAYS_BACK: Optional[str] = None
+    BACKFILL_DURATION_DAYS: Optional[str] = None
+    BACKFILL_MAX_VISITS_PER_DAY: Optional[int] = None
+    BACKFILL_MAX_VISITS_TOTAL: Optional[int] = None
+    BACKFILL_RPS_LIMIT: Optional[float] = None
+    BACKFILL_SEED: Optional[int] = None
+    BACKFILL_RUN_ONCE: bool = Field(default=True, description="Idle after run to avoid restart loops")
+    name: Optional[str] = Field(default=None, description="Optional name for the ephemeral backfill container")
+
+
+class BackfillRunResponse(BaseModel):
+    """Response for POST /api/backfill/run"""
+    success: bool
+    message: str
+    container_name: Optional[str] = None
+    container_id: Optional[str] = None
+    error: Optional[str] = None
+
+
+class BackfillStatusItem(BaseModel):
+    container_name: str
+    container_id: str
+    state: str
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    exit_code: Optional[int] = None
+    error: Optional[str] = None
+
+
+class BackfillStatusResponse(BaseModel):
+    success: bool
+    message: str
+    runs: list[BackfillStatusItem]
+
+
+class BackfillCleanupResponse(BaseModel):
+    success: bool
+    message: str
+    removed: list[str] = []
+    errors: list[str] = []
+
+
+class BackfillLastResponse(BaseModel):
+    success: bool
+    message: str
+    payload: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    timestamp: Optional[str] = None
+
+
+class BackfillCancelResponse(BaseModel):
+    success: bool
+    message: str
+    error: Optional[str] = None
+
+
 class URLContentRequest(BaseModel):
     """Request for URL validation/upload"""
     content: str = Field(..., description="URL file content (one URL per line)")

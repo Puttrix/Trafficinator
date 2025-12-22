@@ -4,6 +4,7 @@ Container management operations
 Provides high-level operations for managing the load generator container.
 """
 import os
+import time
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from docker_client import DockerClient
@@ -15,6 +16,8 @@ class ContainerManager:
     def __init__(self, docker_client: DockerClient):
         self.docker = docker_client
         self.start_signal_file = os.environ.get("START_SIGNAL_FILE", "/app/data/loadgen.start")
+        self.backfill_container_prefix = os.environ.get("BACKFILL_CONTAINER_PREFIX", "matomo-loadgen-backfill")
+        self.backfill_label_key = "backfill-job"
     
     def parse_env_list(self, env_list: list) -> Dict[str, str]:
         """
@@ -52,6 +55,14 @@ class ContainerManager:
                     masked[key] = '***MASKED***'
         
         return masked
+
+    def get_current_env(self) -> Optional[Dict[str, str]]:
+        """Return current container env as a dict."""
+        info = self.docker.get_container_info()
+        if not info:
+            return None
+        env_list = info.get("config", {}).get("env", [])
+        return self.parse_env_list(env_list)
     
     def calculate_uptime(self, started_at: Optional[str]) -> Optional[str]:
         """
@@ -103,6 +114,110 @@ class ContainerManager:
         except Exception as e:
             print(f"Error writing start signal: {e}")
             return False
+
+    def spawn_backfill_job(self, env_vars: Dict[str, str], name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Launch a one-off backfill container using the current container as a template.
+        Does not mutate the primary matomo-loadgen container.
+        """
+        try:
+            container = self.docker.get_container()
+            if not container:
+                return {"success": False, "error": "Primary container not found", "container_name": None, "container_id": None}
+
+            # Extract template info
+            attrs = container.attrs
+            config = attrs.get("Config", {})
+            host_config = attrs.get("HostConfig", {})
+            image = config.get("Image")
+            volumes = host_config.get("Binds", [])
+            network_mode = host_config.get("NetworkMode", "bridge")
+
+            # Prepare env (disable restart loops and force backfill run)
+            env = self.parse_env_list(config.get("Env", []))
+            env.update(env_vars)
+            env.setdefault("BACKFILL_ENABLED", "true")
+            env.setdefault("BACKFILL_RUN_ONCE", "true")
+            env.setdefault("AUTO_START", "true")
+            env.setdefault("LOG_LEVEL", "INFO")
+
+            env_list = [f"{k}={v}" for k, v in env.items()]
+
+            job_name = name or f"{self.backfill_container_prefix}-{int(time.time())}"
+            new_container = self.docker.client.containers.run(
+                image=image,
+                name=job_name,
+                environment=env_list,
+                volumes=volumes,
+                network_mode=network_mode,
+                restart_policy={"Name": "no"},
+                labels={self.backfill_label_key: "true"},
+                detach=True,
+            )
+
+            return {
+                "success": True,
+                "error": None,
+                "container_name": new_container.name,
+                "container_id": new_container.short_id,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "container_name": None, "container_id": None}
+
+    def list_backfill_runs(self) -> list:
+        """List backfill containers by prefix/label."""
+        runs = []
+        try:
+            containers = self.docker.client.containers.list(all=True, filters={"label": f"{self.backfill_label_key}=true"})
+            for c in containers:
+                c.reload()
+                state = c.attrs.get("State", {})
+                runs.append({
+                    "name": c.name,
+                    "id": c.short_id,
+                    "status": c.status,
+                    "started_at": state.get("StartedAt"),
+                    "finished_at": state.get("FinishedAt"),
+                    "exit_code": state.get("ExitCode"),
+                })
+        except Exception as e:
+            print(f"Error listing backfill runs: {e}")
+        return runs
+
+    def cleanup_backfill_runs(self) -> Dict[str, Any]:
+        """Remove stopped backfill containers."""
+        removed = []
+        errors = []
+        try:
+            containers = self.docker.client.containers.list(all=True, filters={"label": f"{self.backfill_label_key}=true"})
+            for c in containers:
+                c.reload()
+                if c.status not in ("exited", "created", "dead"):
+                    continue
+                try:
+                    removed.append(c.name)
+                    c.remove(force=True)
+                except Exception as e:
+                    errors.append(f"{c.name}: {e}")
+        except Exception as e:
+            errors.append(str(e))
+        return {"removed": removed, "errors": errors}
+
+    def cancel_backfill(self, container_name: str) -> Dict[str, Any]:
+        """Stop and remove a backfill container by name."""
+        try:
+            container = self.docker.client.containers.get(container_name)
+            container.reload()
+            if container.labels.get(self.backfill_label_key) != "true":
+                return {"success": False, "error": "Not a backfill container"}
+            if container.status not in ("running", "paused", "created"):
+                return {"success": False, "error": f"Container is {container.status}, not running"}
+            container.stop(timeout=10)
+            # Remove after stop to prevent any restart attempts by external agents
+            container.remove(force=True)
+            return {"success": True, "error": None}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
     
     def get_status(self) -> Dict[str, Any]:
         """
@@ -343,6 +458,10 @@ class ContainerManager:
             # Merge new env vars with existing ones (prioritize new)
             existing_env = {e.split('=', 1)[0]: e.split('=', 1)[1] for e in config.get('Env', []) if '=' in e}
             existing_env.update(env_vars)
+            # Ensure start signal path follows container env if present
+            if "START_SIGNAL_FILE" in existing_env:
+                self.start_signal_file = existing_env["START_SIGNAL_FILE"]
+
             new_env = [f"{k}={v}" for k, v in existing_env.items()]
             
             # Store container settings
@@ -351,6 +470,8 @@ class ContainerManager:
             volumes = host_config.get('Binds', [])
             network_mode = host_config.get('NetworkMode', 'bridge')
             restart_policy = host_config.get('RestartPolicy', {})
+            log_config = host_config.get('LogConfig', {})
+            labels = config.get('Labels', {})
             
             # Stop and remove the old container
             was_running = current_state == "running"
@@ -368,6 +489,8 @@ class ContainerManager:
                 volumes=volumes,
                 network_mode=network_mode,
                 restart_policy=restart_policy,
+                log_config=log_config,
+                labels=labels,
                 detach=True
             )
             

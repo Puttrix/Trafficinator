@@ -82,6 +82,7 @@ BACKFILL_RPS_LIMIT = os.environ.get("BACKFILL_RPS_LIMIT")
 BACKFILL_RPS_LIMIT = float(BACKFILL_RPS_LIMIT) if BACKFILL_RPS_LIMIT else None
 BACKFILL_SEED = os.environ.get("BACKFILL_SEED")
 BACKFILL_SEED = int(BACKFILL_SEED) if BACKFILL_SEED is not None else None
+BACKFILL_RUN_ONCE = os.environ.get("BACKFILL_RUN_ONCE", "false").lower() == "true"
 
 # Startup control
 def _parse_bool(value: Optional[str], default: bool = False) -> bool:
@@ -1409,6 +1410,12 @@ async def run_backfill(session, urls):
     logging.info("[backfill] Complete: %s", summary)
     return summary
 
+async def _idle_after_backfill():
+    """Keep the process alive after a one-off backfill run to avoid restart loops."""
+    logging.info("[backfill] One-off run complete; idling until container is restarted.")
+    while True:
+        await asyncio.sleep(3600)
+
 async def wait_for_start_signal():
     """Block startup when AUTO_START is disabled until a start signal file appears."""
     if AUTO_START:
@@ -1435,6 +1442,8 @@ async def main():
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
         if BACKFILL_ENABLED:
             await run_backfill(session, urls)
+            if BACKFILL_RUN_ONCE:
+                await _idle_after_backfill()
         else:
             await run_realtime(session, urls)
 
