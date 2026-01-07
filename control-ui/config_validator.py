@@ -365,7 +365,7 @@ class ConfigValidator:
                 ) as resp:
                     end_time = asyncio.get_event_loop().time()
                     response_time_ms = (end_time - start_time) * 1000
-                    
+
                     # Matomo typically returns 200 or 204 for tracking requests
                     if resp.status in [200, 204]:
                         return MatomoConnectionResult(
@@ -375,15 +375,50 @@ class ConfigValidator:
                             response_time_ms=round(response_time_ms, 2),
                             message=f"Connection successful (HTTP {resp.status}, {response_time_ms:.0f}ms)"
                         )
-                    else:
-                        return MatomoConnectionResult(
-                            success=False,
-                            reachable=True,
-                            status_code=resp.status,
-                            response_time_ms=round(response_time_ms, 2),
-                            error=f"Unexpected HTTP status {resp.status}",
-                            message=f"Server responded with HTTP {resp.status}"
-                        )
+
+                    # Some Matomo installs respond 400 on tracking pings; fallback to API ping.
+                    parsed_url = urlparse(matomo_url)
+                    base_path = parsed_url.path or "/"
+                    if base_path.endswith(("matomo.php", "piwik.php")):
+                        base_path = base_path.rsplit("/", 1)[0] + "/"
+                    if not base_path.endswith("/"):
+                        base_path += "/"
+                    api_path = f"{base_path}index.php"
+                    api_url = parsed_url._replace(path=api_path, query="", fragment="").geturl()
+
+                    api_params = {
+                        "module": "API",
+                        "method": "API.getMatomoVersion",
+                        "format": "JSON"
+                    }
+                    if token_auth:
+                        api_params["token_auth"] = token_auth
+
+                    async with session.get(
+                        api_url,
+                        params=api_params,
+                        timeout=aiohttp.ClientTimeout(total=timeout),
+                        allow_redirects=True
+                    ) as api_resp:
+                        api_body = await api_resp.json(content_type=None)
+                        api_error = isinstance(api_body, dict) and api_body.get("result") == "error"
+                        if api_resp.status == 200 and not api_error:
+                            return MatomoConnectionResult(
+                                success=True,
+                                reachable=True,
+                                status_code=api_resp.status,
+                                response_time_ms=round(response_time_ms, 2),
+                                message="Connection successful (API ping)"
+                            )
+
+                    return MatomoConnectionResult(
+                        success=False,
+                        reachable=True,
+                        status_code=resp.status,
+                        response_time_ms=round(response_time_ms, 2),
+                        error=f"Unexpected HTTP status {resp.status}",
+                        message=f"Server responded with HTTP {resp.status}"
+                    )
         
         except asyncio.TimeoutError:
             return MatomoConnectionResult(
