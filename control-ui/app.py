@@ -562,6 +562,8 @@ async def validate_config(
 async def test_connection(
     request: Request,
     matomo_url: str = Body(..., embed=True),
+    site_id: int = Body(1, ge=1, embed=True),
+    token_auth: str | None = Body(None, embed=True),
     timeout: float = Body(10.0, ge=1, le=60, embed=True),
     authenticated: bool = Depends(verify_api_key)
 ):
@@ -576,7 +578,12 @@ async def test_connection(
         MatomoConnectionResult: Connection test result
     """
     try:
-        result = await ConfigValidator.test_matomo_connection(matomo_url, timeout)
+        result = await ConfigValidator.test_matomo_connection(
+            matomo_url,
+            site_id=site_id,
+            token_auth=token_auth,
+            timeout=timeout
+        )
         return result
     except Exception as e:
         raise HTTPException(

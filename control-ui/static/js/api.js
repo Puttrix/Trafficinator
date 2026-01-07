@@ -140,12 +140,13 @@ class API {
     }
 
     // Test Matomo connection
-    async testConnection(url, siteId) {
+    async testConnection(url, siteId, tokenAuth = '') {
         return this.request('/api/test-connection', {
             method: 'POST',
             body: JSON.stringify({
                 matomo_url: url,
-                site_id: siteId
+                site_id: siteId,
+                token_auth: tokenAuth || undefined
             })
         });
     }

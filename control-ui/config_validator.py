@@ -315,6 +315,8 @@ class ConfigValidator:
     @staticmethod
     async def test_matomo_connection(
         matomo_url: str,
+        site_id: int = 1,
+        token_auth: str | None = None,
         timeout: float = 10.0
     ) -> MatomoConnectionResult:
         """
@@ -322,6 +324,8 @@ class ConfigValidator:
         
         Args:
             matomo_url: Matomo tracking endpoint URL
+            site_id: Matomo site ID to test against
+            token_auth: Optional Matomo token_auth for secured endpoints
             timeout: Request timeout in seconds
             
         Returns:
@@ -342,13 +346,15 @@ class ConfigValidator:
             
             # Test connection with minimal valid request
             params = {
-                'idsite': 1,
+                'idsite': site_id,
                 'rec': 1,
                 'action_name': 'Connection Test',
                 'url': 'http://test.local/connection-test',
                 '_id': 'test1234567890ab',
                 'rand': int(asyncio.get_event_loop().time() * 1000)
             }
+            if token_auth:
+                params['token_auth'] = token_auth
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(

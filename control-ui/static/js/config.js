@@ -511,6 +511,7 @@ class ConfigForm {
     async testConnection() {
         const matomoUrl = this.form.querySelector('[name="matomo_url"]').value;
         const siteId = this.form.querySelector('[name="matomo_site_id"]').value;
+        const tokenAuth = this.form.querySelector('[name="matomo_token_auth"]').value;
         
         if (!matomoUrl || !siteId) {
             UI.showAlert('Please enter Matomo URL and Site ID first', 'warning');
@@ -519,7 +520,7 @@ class ConfigForm {
         
         try {
             UI.showLoading('Testing Matomo connection...');
-            const result = await api.testConnection(matomoUrl, parseInt(siteId));
+            const result = await api.testConnection(matomoUrl, parseInt(siteId), tokenAuth);
             UI.hideLoading();
             
             if (result.success) {
