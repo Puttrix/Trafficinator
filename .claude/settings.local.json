@@ -7,7 +7,9 @@
       "Bash(pip install:*)",
       "Bash(LOG_LEVEL=DEBUG MAX_TOTAL_VISITS=5 CONCURRENCY=2 docker-compose up --build --abort-on-container-exit)",
       "Bash(docker:*)",
-      "Bash(timeout 30 docker-compose run --rm matomo_loadgen python /app/loader.py)"
+      "Bash(timeout 30 docker-compose run --rm matomo_loadgen python /app/loader.py)",
+      "Bash(curl:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
