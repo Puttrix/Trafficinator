@@ -1,5 +1,12 @@
 # Backlog
 
+## Assistant Maintenance
+- [x] **P-034** Refresh assistant status/task log
+      tags: maintenance  priority: low  est: 0.1h  completed: 2026-01-07
+      deps: none
+      accepts: status.md reflects current backlog and task log; task_log captures the refresh entry
+      result: Updated `.assistant/status.md` and appended a 2026-01-07 log entry.
+
 ## Documentation & Alignment
 - [x] **P-001** Update assistant documentation to reference correct docker-compose files
       tags: documentation, maintenance  priority: medium  est: 1h  completed: 2025-10-30

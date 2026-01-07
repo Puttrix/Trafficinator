@@ -1,0 +1,149 @@
+version: '3.8'
+
+# ==============================================================================
+# TRAFFICINATOR - Complete Stack with Control UI
+# ==============================================================================
+# This stack includes both the load generator and the web-based Control UI.
+# The Control UI is built directly from GitHub (includes the latest bug fixes).
+#
+# SETUP INSTRUCTIONS:
+# 1. In Portainer, create a new stack or update existing one
+# 2. Paste this entire file into the stack editor
+# 3. Set environment variables (see below)
+# 4. Click "Deploy the stack" or "Update the stack"
+# 5. Wait ~2-3 minutes for initial build to complete
+# 6. Access UI at: http://your-server-ip:8000/ui
+# ==============================================================================
+
+services:
+  # Control UI - Web Interface (Built from GitHub)
+  control-ui:
+    build:
+      context: https://github.com/Puttrix/Trafficinator.git#main
+      dockerfile: control-ui/Dockerfile
+    image: trafficinator-control-ui:local
+    container_name: trafficinator-control-ui
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # CHANGE THIS! Generate with: openssl rand -base64 32
+      CONTROL_UI_API_KEY: "${CONTROL_UI_API_KEY:-your-secret-api-key-change-this}"
+
+      # Allow all origins (use your domain in production)
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+    volumes:
+      # Required: Docker socket for container control
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Persistent data (presets, URLs, funnels, backfill history)
+      - control-ui-data:/app/data
+    networks:
+      - trafficinator
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Load Generator
+  matomo-loadgen:
+    # Use published image (or build from source)
+    image: ghcr.io/puttrix/trafficinator:latest
+    # Or build from source:
+    # build:
+    #   context: https://github.com/Puttrix/Trafficinator.git#main
+    #   dockerfile: matomo-load-baked/Dockerfile
+
+    container_name: matomo-loadgen
+    restart: unless-stopped
+
+    environment:
+      # ===== Matomo Connection =====
+      MATOMO_URL: "${MATOMO_URL:-https://matomo.surputte.se/matomo.php}"
+      MATOMO_SITE_ID: "${MATOMO_SITE_ID:-1}"
+      MATOMO_TOKEN_AUTH: "${MATOMO_TOKEN_AUTH}"
+
+      # ===== Startup Control =====
+      # Set to false - Control UI will start it
+      AUTO_START: "false"
+      START_SIGNAL_FILE: "/app/data/loadgen.start"
+
+      # ===== Traffic Generation =====
+      TARGET_VISITS_PER_DAY: "${TARGET_VISITS_PER_DAY:-20000}"
+      CONCURRENCY: "${CONCURRENCY:-50}"
+      PAGEVIEWS_MIN: "${PAGEVIEWS_MIN:-3}"
+      PAGEVIEWS_MAX: "${PAGEVIEWS_MAX:-6}"
+
+      # ===== Auto-Stop Options =====
+      AUTO_STOP_AFTER_HOURS: "${AUTO_STOP_AFTER_HOURS:-0}"
+      MAX_TOTAL_VISITS: "${MAX_TOTAL_VISITS:-0}"
+
+      # ===== Feature Probabilities =====
+      SITESEARCH_PROBABILITY: "${SITESEARCH_PROBABILITY:-0.15}"
+      OUTLINKS_PROBABILITY: "${OUTLINKS_PROBABILITY:-0.10}"
+      DOWNLOADS_PROBABILITY: "${DOWNLOADS_PROBABILITY:-0.08}"
+      CLICK_EVENTS_PROBABILITY: "${CLICK_EVENTS_PROBABILITY:-0.25}"
+      RANDOM_EVENTS_PROBABILITY: "${RANDOM_EVENTS_PROBABILITY:-0.12}"
+      ECOMMERCE_PROBABILITY: "${ECOMMERCE_PROBABILITY:-0.05}"
+      DIRECT_TRAFFIC_PROBABILITY: "${DIRECT_TRAFFIC_PROBABILITY:-0.30}"
+
+      # ===== Geolocation =====
+      RANDOMIZE_VISITOR_COUNTRIES: "${RANDOMIZE_VISITOR_COUNTRIES:-true}"
+
+      # ===== Localization =====
+      TIMEZONE: "${TIMEZONE:-Europe/Stockholm}"
+      ECOMMERCE_CURRENCY: "${ECOMMERCE_CURRENCY:-SEK}"
+
+      # ===== Logging =====
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+
+      # ===== File Paths =====
+      URLS_FILE: "/app/data/urls.txt"
+      FUNNEL_CONFIG_PATH: "/app/data/funnels.json"
+
+    volumes:
+      # Shared data volume with Control UI
+      - loadgen-data:/app/data
+
+    networks:
+      - trafficinator
+
+    depends_on:
+      control-ui:
+        condition: service_healthy
+
+volumes:
+  control-ui-data:
+    driver: local
+  loadgen-data:
+    driver: local
+
+networks:
+  trafficinator:
+    driver: bridge
+
+# ==============================================================================
+# ENVIRONMENT VARIABLES TO SET IN PORTAINER
+# ==============================================================================
+# Go to: Stacks → Your Stack → Environment variables
+#
+# Required:
+# ---------
+# MATOMO_URL=https://matomo.surputte.se/matomo.php
+# MATOMO_TOKEN_AUTH=your-matomo-api-token-here
+# CONTROL_UI_API_KEY=your-strong-secret-key-here
+#
+# Optional (with defaults shown):
+# --------------------------------
+# MATOMO_SITE_ID=1
+# TARGET_VISITS_PER_DAY=20000
+# CONCURRENCY=50
+# TIMEZONE=Europe/Stockholm
+# ECOMMERCE_CURRENCY=SEK
+# CORS_ORIGINS=*
+#
+# For production, also set:
+# CORS_ORIGINS=https://trafficinator.yourdomain.com
+# ==============================================================================

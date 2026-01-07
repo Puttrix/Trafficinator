@@ -198,6 +198,12 @@
 - result: Backend accepts and validates backfill settings with guardrails (window <=180d, no future dates, caps consistency) and exposes env mapping/status fields for upcoming UI/loader work.
 - artifacts: control-ui/config_validator.py, control-ui/models.py, control-ui/container_manager.py
 
+## 2026-01-07
+- tool: apply_patch (.assistant/status.md)
+- args: Refreshed status.md from plan/backlog/task_log to remove stale release notes and align focus with current backlog.
+- result: Status now reflects P-033 one-off backfill focus, upcoming P-006/P-008 work, and recent progress/artifacts.
+- artifacts: .assistant/status.md
+
 - tool: apply_patch (matomo-load-baked/loader.py)
 - args: Added backfill execution path: env parsing, TZ-aware date window selection, per-day/global caps, optional RPS limit, per-day seed offsets, and day-bound visit timelines. Split realtime/backfill loops and kept existing behavior for non-backfill runs.
 - result: Loader can run historical backfill over bounded windows with per-day targets while keeping visits inside each day's timezone bounds; realtime mode unchanged.
