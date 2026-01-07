@@ -348,18 +348,8 @@ class ConfigForm {
         const name = input.name;
         const value = input.value;
         let error = null;
-        
-        // Required fields (skip if backfill disabled)
-        const isBackfillInput = name.startsWith('backfill_');
-        const backfillEnabled = this.form.querySelector('[name="backfill_enabled"]')?.checked;
 
-        if (!(isBackfillInput && !backfillEnabled)) {
-            if (input.hasAttribute('required') && (!value || value.trim() === '')) {
-                error = 'This field is required';
-            }
-        }
-        
-        // Number validation
+        // Check if this is a backfill field and if backfill is enabled
         const isBackfillInput = name.startsWith('backfill_');
         const backfillEnabled = this.form.querySelector('[name="backfill_enabled"]')?.checked;
 
@@ -368,6 +358,13 @@ class ConfigForm {
             this.clearFieldError(input);
             return true;
         }
+
+        // Required fields validation
+        if (input.hasAttribute('required') && (!value || value.trim() === '')) {
+            error = 'This field is required';
+        }
+
+        // Number validation
 
         if (input.type === 'number' && value) {
             const num = parseFloat(value);
