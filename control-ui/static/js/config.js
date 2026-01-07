@@ -350,8 +350,8 @@ class ConfigForm {
         let error = null;
 
         // Check if this is a backfill field and if backfill is enabled
-        const isBackfillInput = name.startsWith('backfill_');
-        const backfillEnabled = this.form.querySelector('[name="backfill_enabled"]')?.checked;
+        var isBackfillInput = name.startsWith('backfill_');
+        var backfillEnabled = this.form.querySelector('[name="backfill_enabled"]')?.checked;
 
         // Skip backfill field validation when backfill is disabled
         if (isBackfillInput && !backfillEnabled) {
